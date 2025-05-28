@@ -1,0 +1,7 @@
+1) we need to copy an existing profile from chrome so that we can use the google account and we dont have to sign in with 2fa
+sh copy-chrome-prof.sh 
+copies the Default profile in chrome, you can specificy a profile if you want for multiple instances
+2) we need to open chrome in debug mode and with open port so that puppetter can connect to it
+# can be separately called in run-chrome.sh
+3) run speech-pup.ts for pup to connect to the port and start it
+# 2 and 3 is combined in pipeline.sh 

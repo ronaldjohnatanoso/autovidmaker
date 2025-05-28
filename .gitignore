@@ -1,0 +1,16 @@
+**/node_modules/
+**/puppeteer-profile/
+**/venv/
+.env
+**/grade/
+
+*.png
+*.jpg
+*.wav
+*.mp4
+
+*.bin
+*.param
+
+**/models/
+

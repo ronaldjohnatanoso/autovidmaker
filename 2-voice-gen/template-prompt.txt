@@ -1,0 +1,14 @@
+i want you to make a conversation between two speakers, follow this strict format:
+Read aloud in a warm, welcoming tone
+Speaker 1: Hello! We're excited to show you our native speech capabilities
+Speaker 2: Where you can direct a voice, create realistic dialog, and so much more. Edit these placeholders to get started.
+
+the read aloud part is the instruction on how the voices will try to speak, could be anything, here are some examples, you can be creative 'read the words aloud, or read angrily, or whisper quietly, or read in sexy voice, or something else. 
+follow the Speaker 1: structure as well as Speaker 2: . remember, dont put direction phrases, the words written will be literally spoken. the sample above is just sample, no need to break immersion by saying we are an ai voice, jump right in to character. 
+dont refer to the other person as a proper noun
+
+the whole script should just be one long conversation
+
+here is the content instruction
+
+two dumb people are arguing about something, but their arguments are stupid sounding , this is comedic, dont be too dumb, kinda like 'well it rhymes with... type of logic', you can be creative on how you make them as long as its funny

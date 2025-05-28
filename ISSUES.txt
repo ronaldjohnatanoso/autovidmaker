@@ -1,0 +1,19 @@
+a cudnn library is not found 
+♻️ PERMANENT Fix for Conda env
+To automatically set LD_LIBRARY_PATH every time you activate xenv, do this:
+
+bash
+Copy
+Edit
+mkdir -p ~/miniconda3/envs/xenv/etc/conda/activate.d
+nano ~/miniconda3/envs/xenv/etc/conda/activate.d/env_vars.sh
+Paste this inside env_vars.sh:
+
+bash
+Copy
+Edit
+export LD_LIBRARY_PATH=/home/ronald/yes/envs/framepackenv/lib/python3.10/site-packages/nvidia/cudnn/lib:$LD_LIBRARY_PATH
+Save and exit (Ctrl+O, Enter, then Ctrl+X).
+
+or just 
+sudo apt-get install libcudnn8

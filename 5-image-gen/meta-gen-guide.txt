@@ -1,0 +1,32 @@
+since a video needs multiple images,
+max_timeout_3 , if reached, throw an error to this whole module
+for each imgprompt in the json that is not yet completed && and number of errors timeouts not reach, loop them:
+    # try to generate
+
+    type prompt in txtarea, press button
+    wait for the img to appear,
+    -> if it takes too long, timeout and count it as error
+        do a refresh and reenter prompt and button 
+    
+    download the first img, 
+    
+
+1:1
+div.x1iyjqo2 > div > div.x1q0g3np > div > div div
+
+div.x1iyjqo2 > div > div.x1q0g3np > div > div:nth-of-type(2) svg:nth-of-type(1)
+
+div.x1iyjqo2 > div > div.x1q0g3np > div > div:nth-of-type(2) svg:nth-of-type(1)
+
+16:9 
+#mount_0_0_fr > div > div > div > div:nth-of-type(2) > div.x9f619 > div > div > div > div:nth-of-type(2) div:nth-of-type(3) span
+
+div.x1iyjqo2 > div > div.x1q0g3np > div > div:nth-of-type(2) svg:nth-of-type(1)
+
+1:1 down arrow
+svg.x139jcc6
+
+
+first img selector not doing it
+
+div.xc26acl > div > div > div:nth-of-type(1) img

@@ -1,0 +1,21 @@
+SHOUT ALOUD
+
+Speaker 1:
+<p1 image_prompt="dramatic courtroom scene, intense spotlight, one person dramatically pointing at the moon on a screen">Objection! The moon landing is not fake.</p1>
+<p2 image_prompt="side-by-side: Apollo astronauts planting flag vs. cheesy sci-fi movie set from the '60s">Fake is when you try to pretend a backyard is space using a bedsheet painted black with glow-in-the-dark stars.</p2>
+
+Speaker 2:
+<p3 image_prompt="close-up of moon flag slightly fluttering, confused astronaut tilting head">But wait... the flag was waving like it was in the breeze, and there’s no air on the moon! That’s suspiciously stagey!</p3>
+<p4 image_prompt="cartoonish detective with magnifying glass looking at blurry footage, squinting skeptically">If I saw that in a movie, I’d say ‘fake rocket’ and demand my popcorn money back!</p4>
+
+Speaker 1:
+<p5 image_prompt="crowd of scientists in old NASA control room, all staring at monitors with tension">Real people watched it happen—like, a bunch of them. Even ones who didn’t like each other very much were watching through telescopes and stuff.</p5>
+<p6 image_prompt="group of cartoon conspirators whispering behind backs, trying (and failing) to keep a secret">You can’t even get your friends to keep quiet about surprise parties, let alone a whole moon lie!</p6>
+
+Speaker 2:
+<p7 image_prompt="mysterious man in trench coat holding up a grainy photo, whispering into walkie-talkie">But what if they all agreed to pretend? Like a big club where the password is ‘yes we went to the moon’ even if they just jumped on a trampoline?</p7>
+<p8 image_prompt="moon rocks sitting next to driveway rocks, both labeled with question marks">And those rocks? They look like any old rock someone found behind a gas station.</p8>
+
+Speaker 1:
+<p9 image_prompt="astronauts bouncing on the moon, slow-motion happy jumps, triumphant music implied">They even bounced around like they weighed less! If that was fake, then gravity is just another word for ‘bad special effects.’</p9>
+<p10 image_prompt="movie director yelling cut while crew holds up fake boulder and cardboard moon backdrop">And if they faked it, why not make it better? Why leave so many clues if you're gonna act surprised when people notice?</p10>

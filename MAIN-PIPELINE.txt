@@ -1,0 +1,2 @@
+given structured script input file with img prompt tagging
+place that in 0. SCRIPT STAGING

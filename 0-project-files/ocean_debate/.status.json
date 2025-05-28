@@ -1,0 +1,87 @@
+{
+  "created_at": "2025-05-28T13:12:45.287505Z",
+  "current_stage": "voice_gen",
+  "stages": {
+    "voice_gen": {
+      "status": "done",
+      "started_at": "2025-05-28T13:12:54.311178Z",
+      "completed_at": null,
+      "duration": null,
+      "error": null,
+      "metadata": {},
+      "ended_at": "2025-05-28T13:13:58.767064Z",
+      "duration_seconds": 64.455886
+    },
+    "captions": {
+      "status": "done",
+      "started_at": "2025-05-28T13:13:58.768045Z",
+      "completed_at": null,
+      "duration": null,
+      "error": null,
+      "metadata": {},
+      "ended_at": "2025-05-28T13:14:08.956208Z",
+      "duration_seconds": 10.188163
+    },
+    "img_prompts": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "duration": null,
+      "error": null,
+      "metadata": {}
+    },
+    "image_gen": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "duration": null,
+      "error": null,
+      "metadata": {}
+    },
+    "upscale_img": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "duration": null,
+      "error": null,
+      "metadata": {}
+    },
+    "img_stitch": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "duration": null,
+      "error": null,
+      "metadata": {}
+    },
+    "vid_edit": {
+      "status": "pending",
+      "started_at": null,
+      "completed_at": null,
+      "duration": null,
+      "error": null,
+      "metadata": {}
+    },
+    "img-prompts": {
+      "status": "done",
+      "started_at": "2025-05-28T13:14:08.957005Z",
+      "error": null,
+      "ended_at": "2025-05-28T13:14:09.093474Z",
+      "duration_seconds": 0.136469
+    },
+    "image-gen": {
+      "status": "done",
+      "started_at": "2025-05-28T13:14:09.093925Z",
+      "error": null,
+      "ended_at": "2025-05-28T13:16:24.070925Z",
+      "duration_seconds": 134.977
+    },
+    "upscale-img": {
+      "status": "done",
+      "started_at": "2025-05-28T13:16:24.071417Z",
+      "error": null,
+      "ended_at": "2025-05-28T13:17:27.502997Z",
+      "duration_seconds": 63.43158
+    }
+  }
+}
