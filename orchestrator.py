@@ -10,23 +10,23 @@ from pathlib import Path
 STAGE_CONFIG = {
     "voice_gen": {
         "inputs": ["{name}_raw.txt"],
-        "command": ["node", "2-voice-gen/pipeline-tts-runner.js", "{name}"],
+        "command": ["node", "2-voice_gen/pipeline-tts-runner.js", "{name}"],
     },
     "captions": {
         "inputs": ["{name}.wav"],
         "command": ["python", "3-captions/transcribe_wordlevel_srt.py", "{name}"],
     },
-    "img-prompts": {
+    "img_prompts": {
         "inputs": ["{name}_wordlevel.srt", "{name}.txt"],
-        "command": ["python", "4-img-prompts/img_prompt_allign.py", "{name}"],
+        "command": ["python", "4-img_prompts/img_prompt_allign.py", "{name}"],
     },
-    "image-gen": {
+    "image_gen": {
         "inputs": ["{name}_img_prompts.json"],
-        "command": ["node", "5-image-gen/pipeline-img-gen.js", "{name}"],
+        "command": ["node", "5-image_gen/pipeline-img-gen.js", "{name}"],
     },
-    "upscale-img" : {
+    "upscale_img" : {
         "inputs" : ["images"],
-        "command": ["node", "6-upscale-img/batch_upscale.js", "{name}"],
+        "command": ["node", "6-upscale_img/batch_upscale.js", "{name}"],
     }
 }
 

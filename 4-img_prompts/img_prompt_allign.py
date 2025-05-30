@@ -116,6 +116,13 @@ def main():
         })
 
     aligned.sort(key=lambda x: x["start"])
+    
+    # forces the first prompt to start at 0.0
+    if aligned:
+    # Force first prompt's start time to zero
+        aligned[0]["start"] = 0.0
+
+    
     for i in range(len(aligned) - 1):
         if aligned[i]["end"] > aligned[i+1]["start"]:
             print(f"[WARNING] Overlap between {aligned[i]['tag']} and {aligned[i+1]['tag']}")
