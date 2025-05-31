@@ -1,56 +1,48 @@
 {
-  "created_at": "2025-05-29T15:25:32.245546Z",
+  "created_at": "2025-05-31T05:23:05.580413Z",
   "current_stage": "voice_gen",
   "stages": {
     "voice_gen": {
       "status": "done",
-      "started_at": "2025-05-29T15:25:33.886138Z",
+      "started_at": "2025-05-31T05:23:16.453760Z",
       "completed_at": null,
       "duration": null,
       "error": null,
       "metadata": {},
-      "ended_at": "2025-05-29T15:26:37.768032Z",
-      "duration_seconds": 63.881894
+      "ended_at": "2025-05-31T05:24:08.992270Z",
+      "duration_seconds": 52.53851
     },
     "captions": {
-      "status": "done",
-      "started_at": "2025-05-29T15:26:37.768867Z",
+      "status": "failed",
+      "started_at": "2025-05-31T05:24:08.993005Z",
       "completed_at": null,
       "duration": null,
-      "error": null,
-      "metadata": {},
-      "ended_at": "2025-05-29T15:26:46.769546Z",
-      "duration_seconds": 9.000679
+      "error": "Process error: Command '['python', '3-captions/transcribe_wordlevel_srt.py', 'ocean_debate']' returned non-zero exit status 1.",
+      "metadata": {}
     },
     "img_prompts": {
-      "status": "done",
-      "started_at": "2025-05-29T15:26:46.770239Z",
+      "status": "pending",
+      "started_at": null,
       "completed_at": null,
       "duration": null,
       "error": null,
-      "metadata": {},
-      "ended_at": "2025-05-29T15:26:46.878217Z",
-      "duration_seconds": 0.107978
+      "metadata": {}
     },
     "image_gen": {
-      "status": "done",
-      "started_at": "2025-05-29T15:26:46.878862Z",
+      "status": "pending",
+      "started_at": null,
       "completed_at": null,
       "duration": null,
       "error": null,
-      "metadata": {},
-      "ended_at": "2025-05-29T15:28:51.176950Z",
-      "duration_seconds": 124.298088
+      "metadata": {}
     },
     "upscale_img": {
-      "status": "done",
-      "started_at": "2025-05-29T15:28:51.177569Z",
+      "status": "pending",
+      "started_at": null,
       "completed_at": null,
       "duration": null,
       "error": null,
-      "metadata": {},
-      "ended_at": "2025-05-29T15:29:54.794426Z",
-      "duration_seconds": 63.616857
+      "metadata": {}
     },
     "img_stitch": {
       "status": "pending",

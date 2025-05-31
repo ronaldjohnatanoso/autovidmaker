@@ -27,9 +27,7 @@ def transcribe_word_level_srt(project_name):
     audio = whisperx.load_audio(audio_path)
     result = model.transcribe(audio)
 
-    print('clear')
-    print(result)
-    exit(1)
+
 
     # 🔹 Save segment-level SRT
     segment_srt_path = os.path.join(base_dir, f"{project_name}_segments.srt")
