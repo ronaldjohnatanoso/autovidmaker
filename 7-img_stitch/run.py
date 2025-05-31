@@ -6,7 +6,8 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 import threading
-from moviepy.editor import ImageClip, CompositeVideoClip, ColorClip, AudioFileClip, TextClip
+from moviepy.editor import ImageClip, CompositeVideoClip, ColorClip, AudioFileClip, TextClip, CompositeAudioClip
+from moviepy.audio.fx.all import audio_loop
 import psutil  # Add this import for system monitoring
 
 # Constants
@@ -16,7 +17,7 @@ FPS = 24
 
 # Subtitle styling constants
 SUBTITLE_FONTSIZE = 80
-SUBTITLE_COLOR = "#69E1FFFD"  # Light green
+SUBTITLE_COLOR = "#FFFFFFFC"  # Light green
 SUBTITLE_FONT = 'Komika-Axis'  # Custom thick font
 SUBTITLE_STROKE_COLOR = 'black'
 SUBTITLE_STROKE_WIDTH = 5
@@ -30,8 +31,27 @@ SCALE_EFFECT = True  # Enable scale animation
 SCALE_FACTOR = 1.2  # How much to scale up (1.2 = 20% bigger)
 SCALE_DURATION = 0.5  # Duration of scale effect
 
+# Motion effect constants
+ENABLE_IMAGE_MOTION = True
+MOTION_TYPE = 'ken_burns'  # Options: 'ken_burns', 'parallax', 'zoom_pan', 'drift'
+MOTION_INTENSITY = 0.2  # How much movement (0.0 to 0.5)
+ZOOM_RANGE = (1.0, 1.2)  # Min and max zoom levels
+PAN_SPEED = 0.05  # How fast to pan across the image
+
+# Background music constants
+BACKGROUND_MUSIC_FILE = "curious.mp3"  # Name of the background music file
+BACKGROUND_MUSIC_VOLUME = 0.4  # Volume level for background music (0.0 to 1.0)
+
+# Add these additional effect constants
+ENABLE_BREATHING_EFFECT = False  # Subtle scale pulsing
+BREATHING_INTENSITY = 0.02  # How much to scale (2% up and down)
+BREATHING_SPEED = 2.0  # Cycles per second
+
+ENABLE_ROTATION_DRIFT = False  # Very subtle rotation
+ROTATION_RANGE = 1.0  # Max rotation in degrees
+
 def create_fitted_image_clip_threaded(entry, upscaled_images_dir):
-    """Thread-safe version of image clip creation"""
+    """Thread-safe version of image clip creation with motion effects"""
     tag = entry['tag']
     start = float(entry['start'])
     end = float(entry['end_adjusted'])
@@ -52,6 +72,10 @@ def create_fitted_image_clip_threaded(entry, upscaled_images_dir):
         else:
             img_clip = img_clip.resize(width=TARGET_WIDTH)
 
+        # Apply motion effects if enabled
+        if ENABLE_IMAGE_MOTION and duration > 1.0:  # Only apply to clips longer than 1 second
+            img_clip = apply_motion_effect(img_clip, duration)
+
         # Black background clip
         bg = ColorClip(size=(TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0), duration=duration)
 
@@ -61,6 +85,163 @@ def create_fitted_image_clip_threaded(entry, upscaled_images_dir):
     except Exception as e:
         print(f"Error processing {image_path}: {e}")
         return None
+
+def apply_motion_effect(img_clip, duration):
+    """Apply various motion effects to image clips"""
+    import random
+    
+    # Apply primary motion effect
+    if MOTION_TYPE == 'ken_burns':
+        img_clip = apply_ken_burns_effect(img_clip, duration)
+    elif MOTION_TYPE == 'parallax':
+        img_clip = apply_parallax_effect(img_clip, duration)
+    elif MOTION_TYPE == 'zoom_pan':
+        img_clip = apply_zoom_pan_effect(img_clip, duration)
+    elif MOTION_TYPE == 'drift':
+        img_clip = apply_drift_effect(img_clip, duration)
+    
+    # Apply additional subtle effects
+    if ENABLE_BREATHING_EFFECT:
+        img_clip = apply_breathing_effect(img_clip, duration)
+    
+    if ENABLE_ROTATION_DRIFT:
+        img_clip = apply_rotation_drift(img_clip, duration)
+    
+    return img_clip
+
+def apply_breathing_effect(img_clip, duration):
+    """Subtle breathing/pulsing scale effect"""
+    import math
+    
+    def breathing_scale(t):
+        # Create a sine wave for breathing effect
+        cycle = math.sin(t * 2 * math.pi * BREATHING_SPEED)
+        scale_variation = cycle * BREATHING_INTENSITY
+        return 1.0 + scale_variation
+    
+    return img_clip.resize(breathing_scale)
+
+def apply_rotation_drift(img_clip, duration):
+    """Very subtle rotation drift"""
+    import random
+    import math
+    
+    max_rotation = ROTATION_RANGE
+    rotation_direction = random.choice([-1, 1])
+    
+    def rotation_func(t):
+        progress = t / duration
+        # Smooth easing
+        eased_progress = 0.5 * (1 - math.cos(progress * math.pi))
+        return rotation_direction * max_rotation * eased_progress
+    
+    return img_clip.rotate(rotation_func)
+
+def apply_ken_burns_effect(img_clip, duration):
+    """Classic Ken Burns effect - slow zoom and pan"""
+    import random
+    
+    # Random start and end zoom levels
+    start_zoom = random.uniform(ZOOM_RANGE[0], ZOOM_RANGE[0] + 0.1)
+    end_zoom = random.uniform(ZOOM_RANGE[1] - 0.1, ZOOM_RANGE[1])
+    
+    # Random pan direction
+    start_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
+    end_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
+    start_y = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
+    end_y = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
+    
+    def ken_burns_transform(t):
+        progress = t / duration
+        
+        # Interpolate zoom
+        zoom = start_zoom + (end_zoom - start_zoom) * progress
+        
+        # Interpolate position
+        x_offset = (start_x + (end_x - start_x) * progress) * TARGET_WIDTH
+        y_offset = (start_y + (end_y - start_y) * progress) * TARGET_HEIGHT
+        
+        return zoom, x_offset, y_offset
+    
+    def resize_func(t):
+        zoom, _, _ = ken_burns_transform(t)
+        return zoom
+    
+    def position_func(t):
+        _, x_offset, y_offset = ken_burns_transform(t)
+        return ('center', 'center')  # Keep centered for now, adjust if needed
+    
+    return img_clip.resize(resize_func)
+
+def apply_parallax_effect(img_clip, duration):
+    """Subtle horizontal parallax movement"""
+    import math
+    
+    # Calculate movement range
+    max_offset = MOTION_INTENSITY * TARGET_WIDTH
+    
+    def parallax_position(t):
+        # Smooth sinusoidal movement
+        progress = t / duration
+        x_offset = math.sin(progress * math.pi * 2) * max_offset
+        return (TARGET_WIDTH // 2 + x_offset, 'center')
+    
+    return img_clip.set_position(parallax_position)
+
+def apply_zoom_pan_effect(img_clip, duration):
+    """Slow zoom with subtle pan"""
+    import random
+    
+    # Random zoom direction (in or out)
+    zoom_in = random.choice([True, False])
+    start_zoom = ZOOM_RANGE[1] if zoom_in else ZOOM_RANGE[0]
+    end_zoom = ZOOM_RANGE[0] if zoom_in else ZOOM_RANGE[1]
+    
+    # Random pan direction
+    pan_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY) * TARGET_WIDTH
+    
+    def zoom_pan_transform(t):
+        progress = t / duration
+        
+        # Smooth zoom
+        zoom = start_zoom + (end_zoom - start_zoom) * progress
+        
+        # Linear pan
+        x_offset = pan_x * progress
+        
+        return zoom, x_offset
+    
+    def resize_func(t):
+        zoom, _ = zoom_pan_transform(t)
+        return zoom
+    
+    def position_func(t):
+        _, x_offset = zoom_pan_transform(t)
+        return (TARGET_WIDTH // 2 + x_offset, 'center')
+    
+    return img_clip.resize(resize_func).set_position(position_func)
+
+def apply_drift_effect(img_clip, duration):
+    """Gentle drifting movement in random direction"""
+    import random
+    import math
+    
+    # Random drift direction and speed
+    drift_angle = random.uniform(0, 2 * math.pi)
+    drift_distance = MOTION_INTENSITY * min(TARGET_WIDTH, TARGET_HEIGHT)
+    
+    def drift_position(t):
+        progress = t / duration
+        
+        # Smooth easing function
+        eased_progress = 0.5 * (1 - math.cos(progress * math.pi))
+        
+        x_offset = math.cos(drift_angle) * drift_distance * eased_progress
+        y_offset = math.sin(drift_angle) * drift_distance * eased_progress
+        
+        return (TARGET_WIDTH // 2 + x_offset, TARGET_HEIGHT // 2 + y_offset)
+    
+    return img_clip.set_position(drift_position)
 
 def create_subtitle_clip_threaded(sub):
     """Thread-safe version of subtitle creation"""
@@ -198,6 +379,15 @@ def main():
     else:
         audio_clip = AudioFileClip(audio_path)
 
+    # Check for background music file
+    background_music_path = os.path.join(script_dir, "..", "common_assets", BACKGROUND_MUSIC_FILE)
+    if not os.path.exists(background_music_path):
+        print(f"Warning: Background music file '{background_music_path}' not found.")
+        background_music_clip = None
+    else:
+        print(f"Loading background music from {background_music_path}")
+        background_music_clip = AudioFileClip(background_music_path)
+
     # Check for SRT subtitle file
     srt_path = os.path.join(base_dir, f"{project_name}_wordlevel.srt")
     if not os.path.exists(srt_path):
@@ -267,8 +457,22 @@ def main():
     final_video = CompositeVideoClip(all_clips, size=(TARGET_WIDTH, TARGET_HEIGHT)).set_duration(clips[-1].end)
     
     # Add audio if available
-    if audio_clip:
+    if audio_clip and background_music_clip:
+        # Loop background music to match video duration
+        video_duration = final_video.duration
+        background_music_looped = audio_loop(background_music_clip, duration=video_duration).volumex(BACKGROUND_MUSIC_VOLUME)
+        
+        # Composite audio: main audio + background music
+        composite_audio = CompositeAudioClip([audio_clip, background_music_looped])
+        final_video = final_video.set_audio(composite_audio)
+    elif audio_clip:
+        # Only main audio
         final_video = final_video.set_audio(audio_clip)
+    elif background_music_clip:
+        # Only background music
+        video_duration = final_video.duration
+        background_music_looped = audio_loop(background_music_clip, duration=video_duration).volumex(BACKGROUND_MUSIC_VOLUME)
+        final_video = final_video.set_audio(background_music_looped)
 
     if args.render:
         output_path = os.path.join(base_dir, f"{project_name}.mp4")

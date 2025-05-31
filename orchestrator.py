@@ -28,6 +28,11 @@ STAGE_CONFIG = {
         "inputs" : ["images"],
         "command": ["node", "6-upscale_img/batch_upscale.js", "{name}"],
     }
+    ,
+    "img_stitch": {
+        "inputs": ["{name}_img_prompts.json", "upscaled_images"],
+        "command": ["python", "7-img_stitch/run.py", "{name}", "--render"],
+    },
 }
 
 STAGE_ORDER = list(STAGE_CONFIG.keys())
