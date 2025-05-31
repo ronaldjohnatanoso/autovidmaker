@@ -1,9 +1,7 @@
 {
   "stages": {
     "voice_gen": {
-      "estimated_duration_ms": 72000,
-      "speaker1" : "Pulcherrima",
-      "speaker2" : "Gacrux"
+      "estimated_duration_ms": 85000
     },
     "captions": {},
     "img_prompts": {},

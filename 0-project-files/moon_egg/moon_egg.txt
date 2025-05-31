@@ -1,0 +1,38 @@
+duration_estimation_milliseconds: 90000
+voice_instruction: SPEAKER 1 – CONFIDENT LIKE A FAKE GURU. SPEAKER 2 – TIRED, BUT STILL TRYING TO SALVAGE SANITY.
+
+Speaker 1:
+<p1 image_prompt="moon in night sky with glowing aura, cracked like an eggshell, yolk spilling out">OPEN YOUR EYES. THE MOON… ISN’T A ROCK. IT’S A GIANT EGG. A CELESTIAL OMELETTE.</p1>
+<p2 image_prompt="ancient cave drawing of moon with chicken legs and wings, tribal style">OUR ANCESTORS KNEW. THE TRUTH WAS IN THE CAVES. THEY DREW THE MOON WITH FEATHERS.</p2>
+
+Speaker 2:
+<p3 image_prompt="NASA photo of the moon's surface with craters and regolith, labeled">It’s made of rock. Basalt. Regolith. You can look this up. It's not soft-boiled space poultry.</p3>
+<p4 image_prompt="scientist at a chalkboard, clearly fed up, drawing a normal moon">There is no evidence of yolk. No shell. No beak. No clucking sounds. It’s just… the moon.</p4>
+
+Speaker 1:
+<p5 image_prompt="frying pan in space with Earth reflected in yolk">AND YET… THE MOON CONTROLS THE TIDES. LIKE A WOMB. A MOTHERLY EGG. CRADLING THE SEA.</p5>
+<p6 image_prompt="person holding a dozen eggs with one labeled 'MOON SAMPLE'">EVER WONDER WHY EGGS LOOK EXACTLY LIKE THE MOON IF YOU SQUINT HARD ENOUGH? COINCIDENCE? OR COSMIC SYMBOLISM?</p6>
+
+Speaker 2:
+<p7 image_prompt="eye twitching in frustration, person holding coffee, exhausted">Okay but... symbolism isn't physics. You can’t just scream “egg” at the sky and call it science.</p7>
+<p8 image_prompt="person Googling 'moon made of egg' with malware pop-ups everywhere">Also, your sources are mostly... Facebook memes and one forum post by someone named 'EggLord420.'</p8>
+
+Speaker 1:
+<p9 image_prompt="moon base cracked open like egg, alien yolk spilling out, highly dramatized">NASA IS HIDING THE TRUTH. THEY LANDED TO PATCH THE SHELL. TO STOP THE BIRTH.</p9>
+<p10 image_prompt="diagram of moon hatching into giant cosmic chicken with Earth screaming">ONE DAY, IT WILL HATCH. AND WHEN IT DOES? THE SKY WILL BE FULL OF BEAK. FULL. OF. BEAK.</p10>
+
+Speaker 2:
+<p11 image_prompt="Speaker 2 giving presentation to empty room, labeled 'Why The Moon Is Not An Egg'">No. Stop. Please. Moons don’t hatch. That’s not a sentence I should have to say out loud.</p11>
+<p12 image_prompt="moon orbiting Earth with scribbled arrows saying 'egg rotation aura energy field'">This is just spirals and arrows. You’ve drawn an egg over every planet. Even Jupiter. Why?</p12>
+
+Speaker 1:
+<p13 image_prompt="egg carton labeled 'Solar System' with each planet in an egg slot, Sun as butter">BECAUSE THE WHOLE SOLAR SYSTEM IS A BREAKFAST. EARTH IS THE TOAST. SATURN IS A DONUT. URANUS? OBVIOUSLY THE JUICE.</p13>
+<p14 image_prompt="ancient scroll with 'BRUNCH THEORY' written in glowing letters, people bowing to it">IT'S CALLED THE BRUNCH THEORY. THEY DON’T TEACH THIS IN SCHOOL BECAUSE THE CHICKEN OVERLORDS RUN THE TEXTBOOK INDUSTRY.</p14>
+
+Speaker 2:
+<p15 image_prompt="scientist screaming into void, blackboard behind them says 'I give up'">I have three PhDs. I was published in Nature. Now I’m arguing with someone who thinks Mercury is an egg timer.</p15>
+<p16 image_prompt="Speaker 2 floating in space in fetal position, defeated, moon behind them">Maybe we deserve the giant space chicken. Maybe that’s justice.</p16>
+
+Speaker 1:
+<p17 image_prompt="moon cracking open in glorious beam of light, massive winged bird emerging from within">THE TRUTH IS OUT THERE. AND IT’S PEEPING. WAKE UP, SHELLHEADS. THE YOLK… IS ON YOU.</p17>
+<p18 image_prompt="auditorium of people with egg-shaped heads clapping and rising to their feet">THE AGE OF THE MOONCHICKEN IS NIGH.</p18>

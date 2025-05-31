@@ -45,7 +45,6 @@ function delay(ms) {
     console.error(`❌ Raw text file not found: ${rawTextFile}`);
     process.exit(1);
   }
-
   //find the config.json in the project folder
   const configFilePath = path.join(projectFolder, "config.json");
   if (!fs.existsSync(configFilePath)) {
@@ -53,6 +52,8 @@ function delay(ms) {
     process.exit(1);
   }
   const config = JSON.parse(fs.readFileSync(configFilePath, "utf8"));
+
+
   const estimatedMilliseconds = config["stages"]["voice_gen"]["estimated_duration_ms"];
 
   // Output audio path: ../0-project-files/<projectName>/<projectName>.wav
@@ -87,6 +88,7 @@ function delay(ms) {
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
   );
 
+
   await page.goto("https://aistudio.google.com/generate-speech", {
     waitUntil: "networkidle2",
   });
@@ -117,10 +119,15 @@ function delay(ms) {
   );
   console.log("🖱 Clicked first voice settings expansion panel");
 
-  // Select Enceladus voice (#mat-option-12)
-  await page.waitForSelector("#mat-option-12 > span > div", { visible: true });
-  await page.click("#mat-option-12 > span > div");
-  console.log("🎯 Selected Enceladus voice");
+  // Select speaker 1
+  const speaker1 = config["stages"]["voice_gen"]["speaker1"];
+  const speaker2 = config["stages"]["voice_gen"]["speaker2"];
+
+ 
+
+  await page.waitForSelector(`text/play_circle ${speaker1}`, { visible: true });
+  await page.click(`text/play_circle ${speaker1}`);
+  console.log(`🎯 Selected speaker 1: ${speaker1}`);
   await delay(500);
 
   // Click second voice dropdown trigger (Puck)
@@ -131,10 +138,10 @@ function delay(ms) {
   await page.click("ms-voice-settings:nth-of-type(2) mat-select-trigger");
   console.log("🖱 Clicked second voice dropdown");
 
-  // Select Gacrux voice (#mat-option-54)
-  await page.waitForSelector("#mat-option-54 > span > div", { visible: true });
-  await page.click("#mat-option-54 > span > div");
-  console.log("🎯 Selected Gacrux voice");
+  // Select speaker 2
+  await page.waitForSelector(`text/play_circle ${speaker2}`, { visible: true });
+  await page.click(`text/play_circle ${speaker2}`);
+  console.log(`🎯 Selected speaker 2: ${speaker2}`);
   await delay(500);
 
   // Wait for textarea, clear and type raw text

@@ -21,7 +21,7 @@ import psutil
 TARGET_WIDTH = 1920
 TARGET_HEIGHT = 1080
 FPS = 24
-SEGMENT_DURATION = 20  # seconds per segment
+SEGMENT_DURATION = 15  # seconds per segment
 
 # Subtitle styling constants (updated for brain rot)
 SUBTITLE_FONTSIZE = 100  # Bigger text
@@ -108,7 +108,7 @@ class VideoSegmentProcessor:
             # Create image clips for this segment
             image_clips = []
             for entry in segment_images:
-                clip = self._create_image_clip_with_segment_timing(entry, start_time)
+                clip = self._create_image_clip(entry)
                 if clip:
                     # Adjust timing relative to segment start
                     clip_start = max(0, float(entry['start']) - start_time)
@@ -236,63 +236,8 @@ class VideoSegmentProcessor:
         return segment_subtitles
     
     def _create_image_clip(self, entry):
-        """Create image clip with motion effects, accounting for segment timing"""
+        """Create image clip with motion effects"""
         return create_fitted_image_clip_threaded(entry, self.upscaled_images_dir)
-    
-    def _create_image_clip_with_segment_timing(self, entry, segment_start_time):
-        """Create image clip with motion effects that account for segment timing"""
-        tag = entry['tag']
-        img_start = float(entry['start'])
-        img_end = float(entry['end_adjusted'])
-        image_filename = f"{tag}.png"
-        image_path = os.path.join(self.upscaled_images_dir, image_filename)
-
-        if not os.path.exists(image_path):
-            print(f"Warning: Image '{image_path}' not found. Skipping.")
-            return None
-
-        try:
-            img_duration = img_end - img_start
-            img_clip = ImageClip(image_path).set_duration(img_duration)
-
-            # Calculate where we are in the image's total timeline
-            image_time_offset = max(0, segment_start_time - img_start)
-            
-            print(f"Processing {image_filename}: duration={img_duration:.2f}s, offset={image_time_offset:.2f}s")
-
-            # Ensure we have valid dimensions
-            if img_clip.w <= 0 or img_clip.h <= 0:
-                print(f"Error: Invalid image dimensions for {image_filename}: {img_clip.w}x{img_clip.h}")
-                return None
-
-            # Resize preserving aspect ratio
-            aspect_ratio = img_clip.w / img_clip.h
-            target_aspect = TARGET_WIDTH / TARGET_HEIGHT
-
-            if aspect_ratio < target_aspect:
-                new_height = TARGET_HEIGHT
-                new_width = int(TARGET_HEIGHT * aspect_ratio)
-            else:
-                new_width = TARGET_WIDTH
-                new_height = int(TARGET_WIDTH / aspect_ratio)
-
-            new_width = max(1, new_width)
-            new_height = max(1, new_height)
-            img_clip = img_clip.resize((new_width, new_height))
-
-            # Apply motion effects with time offset
-            if ENABLE_IMAGE_MOTION and img_duration > 0.5:
-                img_clip = apply_motion_effect_with_offset_and_tag(img_clip, img_duration, image_time_offset, tag)
-
-            # Black background
-            bg = ColorClip(size=(TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0), duration=img_duration)
-            final = CompositeVideoClip([bg, img_clip.set_position("center")])
-            return final
-            
-        except Exception as e:
-            print(f"Error processing {image_path}: {e}")
-            traceback.print_exc()
-            return None
     
     def _create_subtitle_clip(self, sub):
         """Create subtitle clip with brain rot effects"""
@@ -708,73 +653,6 @@ def apply_motion_effect(img_clip, duration):
     
     return img_clip
 
-def apply_motion_effect_with_offset(img_clip, total_duration, time_offset):
-    """Apply motion effects accounting for where we are in the image's timeline"""
-    import random
-    
-    # Apply primary motion effect with time offset
-    if MOTION_TYPE == 'ken_burns':
-        img_clip = apply_ken_burns_effect_with_offset(img_clip, total_duration, time_offset)
-    elif MOTION_TYPE == 'parallax':
-        img_clip = apply_parallax_effect_with_offset(img_clip, total_duration, time_offset)
-    elif MOTION_TYPE == 'zoom_pan':
-        img_clip = apply_zoom_pan_effect_with_offset(img_clip, total_duration, time_offset)
-    elif MOTION_TYPE == 'drift':
-        img_clip = apply_drift_effect_with_offset(img_clip, total_duration, time_offset)
-    
-    # Apply brain rot effects with offset
-    if ENABLE_BREATHING_EFFECT and not ENABLE_ZOOM_PULSE:
-        img_clip = apply_breathing_effect_with_offset(img_clip, total_duration, time_offset)
-    
-    if ENABLE_ROTATION_DRIFT:
-        img_clip = apply_rotation_drift_with_offset(img_clip, total_duration, time_offset)
-        
-    if ENABLE_SHAKE_EFFECT:
-        img_clip = apply_shake_effect_with_offset(img_clip, total_duration, time_offset)
-        
-    if ENABLE_ZOOM_PULSE and not ENABLE_BREATHING_EFFECT:
-        img_clip = apply_zoom_pulse_effect_with_offset(img_clip, total_duration, time_offset)
-        
-    if ENABLE_GLITCH_EFFECT:
-        img_clip = apply_glitch_effect_with_offset(img_clip, total_duration, time_offset)
-    
-    return img_clip
-
-def apply_motion_effect_with_offset_and_tag(img_clip, total_duration, time_offset, tag):
-    """Apply motion effects with consistent seeding based on image tag"""
-    import random
-    
-    # Use tag for consistent seeding across all segments of the same image
-    seed_value = hash(tag) % 2147483647
-    
-    # Apply primary motion effect with time offset
-    if MOTION_TYPE == 'ken_burns':
-        img_clip = apply_ken_burns_effect_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value)
-    elif MOTION_TYPE == 'parallax':
-        img_clip = apply_parallax_effect_with_offset(img_clip, total_duration, time_offset)
-    elif MOTION_TYPE == 'zoom_pan':
-        img_clip = apply_zoom_pan_effect_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value)
-    elif MOTION_TYPE == 'drift':
-        img_clip = apply_drift_effect_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value)
-    
-    # Apply brain rot effects with offset
-    if ENABLE_BREATHING_EFFECT and not ENABLE_ZOOM_PULSE:
-        img_clip = apply_breathing_effect_with_offset(img_clip, total_duration, time_offset)
-    
-    if ENABLE_ROTATION_DRIFT:
-        img_clip = apply_rotation_drift_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value)
-        
-    if ENABLE_SHAKE_EFFECT:
-        img_clip = apply_shake_effect_with_offset(img_clip, total_duration, time_offset)
-        
-    if ENABLE_ZOOM_PULSE and not ENABLE_BREATHING_EFFECT:
-        img_clip = apply_zoom_pulse_effect_with_offset(img_clip, total_duration, time_offset)
-        
-    if ENABLE_GLITCH_EFFECT:
-        img_clip = apply_glitch_effect_with_offset(img_clip, total_duration, time_offset)
-    
-    return img_clip
-
 def apply_zoom_pulse_effect(img_clip, duration):
     """Rapid zoom pulse effect"""
     import math
@@ -787,18 +665,6 @@ def apply_zoom_pulse_effect(img_clip, duration):
     # Don't chain with existing resize - apply directly
     return img_clip.resize(zoom_pulse_func)
 
-def apply_zoom_pulse_effect_with_offset(img_clip, total_duration, time_offset):
-    """Zoom pulse effect that continues smoothly across segments"""
-    import math
-    
-    def zoom_pulse_func(t):
-        adjusted_t = t + time_offset
-        pulse = math.sin(adjusted_t * ZOOM_PULSE_SPEED * 2 * math.pi)
-        zoom_variation = pulse * ZOOM_PULSE_INTENSITY
-        return 1.0 + zoom_variation
-    
-    return img_clip.resize(zoom_pulse_func)
-
 def apply_breathing_effect(img_clip, duration):
     """Subtle breathing/pulsing scale effect"""
     import math
@@ -806,18 +672,6 @@ def apply_breathing_effect(img_clip, duration):
     def breathing_scale(t):
         # Create a sine wave for breathing effect
         cycle = math.sin(t * 2 * math.pi * BREATHING_SPEED)
-        scale_variation = cycle * BREATHING_INTENSITY
-        return 1.0 + scale_variation
-    
-    return img_clip.resize(breathing_scale)
-
-def apply_breathing_effect_with_offset(img_clip, total_duration, time_offset):
-    """Breathing effect that continues smoothly across segments"""
-    import math
-    
-    def breathing_scale(t):
-        adjusted_t = t + time_offset
-        cycle = math.sin(adjusted_t * 2 * math.pi * BREATHING_SPEED)
         scale_variation = cycle * BREATHING_INTENSITY
         return 1.0 + scale_variation
     
@@ -965,272 +819,6 @@ def apply_glitch_effect(img_clip, duration):
     
     def glitch_position(t):
         # Random chance for glitch
-        if random.random() < GLITCH_PROBABILITY:
-            x_glitch = random.uniform(-GLITCH_INTENSITY, GLITCH_INTENSITY)
-            y_glitch = random.uniform(-GLITCH_INTENSITY, GLITCH_INTENSITY)
-            return (TARGET_WIDTH // 2 + x_glitch, TARGET_HEIGHT // 2 + y_glitch)
-        return ('center', 'center')
-    
-    return img_clip.set_position(glitch_position)
-
-def apply_ken_burns_effect_with_offset(img_clip, total_duration, time_offset):
-    """Ken Burns effect that continues smoothly across segments"""
-    import random
-    
-    # Use image dimensions as a consistent seed source
-    seed_value = hash((img_clip.w, img_clip.h, total_duration)) % 2147483647
-    random.seed(seed_value)
-    
-    start_zoom = random.uniform(ZOOM_RANGE[0], ZOOM_RANGE[0] + 0.1)
-    end_zoom = random.uniform(ZOOM_RANGE[1] - 0.1, ZOOM_RANGE[1])
-    start_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    end_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    start_y = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    end_y = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    
-    def ken_burns_transform(t):
-        # Adjust t to account for where we are in the total image timeline
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        
-        # Clamp progress to [0, 1]
-        progress = max(0, min(1, progress))
-        
-        # Interpolate zoom and position
-        zoom = start_zoom + (end_zoom - start_zoom) * progress
-        x_offset = (start_x + (end_x - start_x) * progress) * TARGET_WIDTH
-        y_offset = (start_y + (end_y - start_y) * progress) * TARGET_HEIGHT
-        
-        return zoom, x_offset, y_offset
-    
-    def resize_func(t):
-        zoom, _, _ = ken_burns_transform(t)
-        return zoom
-    
-    return img_clip.resize(resize_func)
-
-def apply_ken_burns_effect_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value):
-    """Ken Burns effect with tag-based seeding"""
-    import random
-    
-    random.seed(seed_value)
-    
-    start_zoom = random.uniform(ZOOM_RANGE[0], ZOOM_RANGE[0] + 0.1)
-    end_zoom = random.uniform(ZOOM_RANGE[1] - 0.1, ZOOM_RANGE[1])
-    start_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    end_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    start_y = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    end_y = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    
-    def ken_burns_transform(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        zoom = start_zoom + (end_zoom - start_zoom) * progress
-        return zoom
-    
-    return img_clip.resize(ken_burns_transform)
-
-def apply_rotation_drift_with_offset(img_clip, total_duration, time_offset):
-    """Rotation drift that continues smoothly across segments"""
-    import random
-    import math
-    
-    # Use consistent seed
-    seed_value = hash((img_clip.w, img_clip.h, total_duration)) % 2147483647
-    random.seed(seed_value)
-    
-    max_rotation = ROTATION_RANGE
-    rotation_direction = random.choice([-1, 1])
-    
-    def rotation_func(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        # Smooth easing
-        eased_progress = 0.5 * (1 - math.cos(progress * math.pi))
-        return rotation_direction * max_rotation * eased_progress
-    
-    return img_clip.rotate(rotation_func)
-
-def apply_rotation_drift_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value):
-    """Rotation drift with tag-based seeding"""
-    import random
-    import math
-    
-    random.seed(seed_value)
-    
-    max_rotation = ROTATION_RANGE
-    rotation_direction = random.choice([-1, 1])
-    
-    def rotation_func(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        eased_progress = 0.5 * (1 - math.cos(progress * math.pi))
-        return rotation_direction * max_rotation * eased_progress
-    
-    return img_clip.rotate(rotation_func)
-
-def apply_zoom_pan_effect_with_offset(img_clip, total_duration, time_offset):
-    """Zoom pan effect that continues smoothly across segments"""
-    import random
-    
-    # Use consistent seed
-    seed_value = hash((img_clip.w, img_clip.h, total_duration)) % 2147483647
-    random.seed(seed_value)
-    
-    zoom_in = random.choice([True, False])
-    start_zoom = ZOOM_RANGE[1] if zoom_in else ZOOM_RANGE[0]
-    end_zoom = ZOOM_RANGE[0] if zoom_in else ZOOM_RANGE[1]
-    pan_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY) * TARGET_WIDTH
-    
-    def zoom_pan_transform(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        zoom = start_zoom + (end_zoom - start_zoom) * progress
-        x_offset = pan_x * progress
-        
-        return zoom, x_offset
-    
-    def resize_func(t):
-        zoom, _ = zoom_pan_transform(t)
-        return zoom
-    
-    def position_func(t):
-        _, x_offset = zoom_pan_transform(t)
-        return (TARGET_WIDTH // 2 + x_offset, 'center')
-    
-    return img_clip.resize(resize_func).set_position(position_func)
-
-def apply_zoom_pan_effect_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value):
-    """Zoom pan effect with tag-based seeding"""
-    import random
-    
-    random.seed(seed_value)
-    
-    zoom_in = random.choice([True, False])
-    start_zoom = ZOOM_RANGE[1] if zoom_in else ZOOM_RANGE[0]
-    end_zoom = ZOOM_RANGE[0] if zoom_in else ZOOM_RANGE[1]
-    pan_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY) * TARGET_WIDTH
-    
-    def zoom_pan_transform(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        zoom = start_zoom + (end_zoom - start_zoom) * progress
-        return zoom
-    
-    def position_func(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        x_offset = pan_x * progress
-        return (TARGET_WIDTH // 2 + x_offset, 'center')
-    
-    return img_clip.resize(zoom_pan_transform).set_position(position_func)
-
-def apply_drift_effect_with_offset(img_clip, total_duration, time_offset):
-    """Drift effect that continues smoothly across segments"""
-    import random
-    import math
-    
-    # Use consistent seed
-    seed_value = hash((img_clip.w, img_clip.h, total_duration)) % 2147483647
-    random.seed(seed_value)
-    
-    drift_angle = random.uniform(0, 2 * math.pi)
-    drift_distance = MOTION_INTENSITY * min(TARGET_WIDTH, TARGET_HEIGHT)
-    
-    def drift_position(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        eased_progress = 0.5 * (1 - math.cos(progress * math.pi))
-        
-        x_offset = math.cos(drift_angle) * drift_distance * eased_progress
-        y_offset = math.sin(drift_angle) * drift_distance * eased_progress
-        
-        return (TARGET_WIDTH // 2 + x_offset, TARGET_HEIGHT // 2 + y_offset)
-    
-    return img_clip.set_position(drift_position)
-
-def apply_drift_effect_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value):
-    """Drift effect with tag-based seeding"""
-    import random
-    import math
-    
-    random.seed(seed_value)
-    
-    drift_angle = random.uniform(0, 2 * math.pi)
-    drift_distance = MOTION_INTENSITY * min(TARGET_WIDTH, TARGET_HEIGHT)
-    
-    def drift_position(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        eased_progress = 0.5 * (1 - math.cos(progress * math.pi))
-        
-        x_offset = math.cos(drift_angle) * drift_distance * eased_progress
-        y_offset = math.sin(drift_angle) * drift_distance * eased_progress
-        
-        return (TARGET_WIDTH // 2 + x_offset, TARGET_HEIGHT // 2 + y_offset)
-    
-    return img_clip.set_position(drift_position)
-
-def apply_parallax_effect_with_offset(img_clip, total_duration, time_offset):
-    """Parallax effect that continues smoothly across segments"""
-    import math
-    
-    max_offset = MOTION_INTENSITY * TARGET_WIDTH
-    
-    def parallax_position(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        x_offset = math.sin(progress * math.pi * 2) * max_offset
-        return (TARGET_WIDTH // 2 + x_offset, 'center')
-    
-    return img_clip.set_position(parallax_position)
-
-def apply_shake_effect_with_offset(img_clip, total_duration, time_offset):
-    """Shake effect that continues smoothly across segments"""
-    import random
-    import math
-    
-    def shake_position(t):
-        adjusted_t = t + time_offset
-        # Use a more stable seed for shake
-        shake_seed = int((adjusted_t * SHAKE_FREQUENCY) * 1000) % 2147483647
-        random.seed(shake_seed)
-        
-        x_shake = random.uniform(-SHAKE_INTENSITY, SHAKE_INTENSITY)
-        y_shake = random.uniform(-SHAKE_INTENSITY, SHAKE_INTENSITY)
-        
-        return (TARGET_WIDTH // 2 + x_shake, TARGET_HEIGHT // 2 + y_shake)
-    
-    return img_clip.set_position(shake_position)
-
-def apply_glitch_effect_with_offset(img_clip, total_duration, time_offset):
-    """Glitch effect that continues smoothly across segments"""
-    import random
-    
-    def glitch_position(t):
-        adjusted_t = t + time_offset
-        # Use adjusted time for consistent glitch timing
-        glitch_seed = int(adjusted_t * 1000) % 2147483647
-        random.seed(glitch_seed)
-        
         if random.random() < GLITCH_PROBABILITY:
             x_glitch = random.uniform(-GLITCH_INTENSITY, GLITCH_INTENSITY)
             y_glitch = random.uniform(-GLITCH_INTENSITY, GLITCH_INTENSITY)

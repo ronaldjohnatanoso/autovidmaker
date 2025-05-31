@@ -118,7 +118,9 @@ def write_config_file(target_dir, estimated_millis):
     config = {
         "stages": {
             "voice_gen": {
-                "estimated_duration_ms": estimated_millis
+                "estimated_duration_ms": estimated_millis,
+                "speaker1" : "Pulcherrima",
+                "speaker2" : "Gacrux"
             },
             "captions": {},
             "img_prompts": {},
