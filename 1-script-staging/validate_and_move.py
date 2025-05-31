@@ -7,23 +7,28 @@ from datetime import datetime
 
 # ------------------------ Rule Check Functions ------------------------
 
-def check_first_line_milliseconds(lines):
+def check_duration_line(lines):
     if not lines:
         return False, "Script is empty"
+    if not lines[0].startswith("duration_estimation_milliseconds:"):
+        return False, "First line must start with 'duration_estimation_milliseconds:'"
     try:
-        millis = int(lines[0])
+        duration_part = lines[0].split(":", 1)[1].strip()
+        millis = int(duration_part)
         if millis <= 0:
             return False, "Estimated milliseconds must be a positive integer"
-    except ValueError:
-        return False, "First line must be an integer representing estimated milliseconds"
+    except (ValueError, IndexError):
+        return False, "Invalid duration format. Expected 'duration_estimation_milliseconds: <number>'"
     return True, None
 
-def check_title_format(lines):
+def check_voice_instruction(lines):
     if len(lines) < 2:
-        return False, "Missing title after milliseconds"
-    title = lines[1]
-    if not re.fullmatch(r"[A-Za-z0-9 ,.?!'\"-]+", title):
-        return False, "Invalid title format: only letters, numbers, spaces, and punctuation (,.?!'\"-) allowed"
+        return False, "Missing voice instruction after duration"
+    if not lines[1].startswith("voice_instruction:"):
+        return False, "Second line must start with 'voice_instruction:'"
+    instruction = lines[1].split(":", 1)[1].strip()
+    if not instruction:
+        return False, "Voice instruction cannot be empty"
     return True, None
 
 def check_speaker_line_format(line):
@@ -39,8 +44,8 @@ def check_tagged_paragraph(line):
 
 def validate_script_lines(lines):
     if len(lines) < 3:
-        return False, "No content after title"
-    idx = 2  # Skip milliseconds and title
+        return False, "No content after voice instruction"
+    idx = 2  # Skip duration and voice instruction
     while idx < len(lines):
         line = lines[idx]
 
@@ -71,8 +76,8 @@ def validate_script(filepath):
         lines = [line.strip() for line in f if line.strip()]
 
     rules = [
-        check_first_line_milliseconds,
-        check_title_format,
+        check_duration_line,
+        check_voice_instruction,
         validate_script_lines
     ]
 
@@ -146,10 +151,11 @@ def move_to_project_folder(filepath):
     return dest_path, target_dir
 
 def strip_tags_preserve_text(lines):
-    # Include line 1 (instruction), skip line 0 (milliseconds)
-    stripped_lines = [lines[1]]  # Keep the instruction/title
+    # Extract voice instruction (line 1)
+    voice_instruction = lines[1].split(":", 1)[1].strip()
+    stripped_lines = [voice_instruction]  # Keep the voice instruction
 
-    for line in lines[2:]:  # Skip milliseconds
+    for line in lines[2:]:  # Skip duration and voice instruction
         if line.startswith("Speaker"):
             speaker, rest = line.split(":", 1)
             text_only = re.sub(r'<p\d+\s+image_prompt="[^"]*">(.*?)</p\d+>', r'\1', rest.strip())
@@ -185,7 +191,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     original_lines = result
-    estimated_millis = int(original_lines[0])
+    # Extract duration from the new format
+    estimated_millis = int(original_lines[0].split(":", 1)[1].strip())
     moved_path, target_dir = move_to_project_folder(script_path)
 
     name_only, _ = os.path.splitext(os.path.basename(script_path))

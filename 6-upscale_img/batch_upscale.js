@@ -50,23 +50,24 @@ const args = [
   '-f', 'png'
 ];
 
+// Run the upscaling command
 execFile(cmd, args, (error, stdout, stderr) => {
   if (error) {
     console.error('❌ Error:', error.message);
     return;
   }
-//   console.log('✅ Output:\n', stdout);
-  if (stderr) console.error('⚠️ stderr:', stderr);
-});
+  if (stderr) {
+    console.error('⚠️ stderr:', stderr);
+  }
 
-// Update status to completed
-statusData.stages.upscale_img.status = 'completed';
-//complete_at
-statusData.stages.upscale_img.completed_at = new Date().toISOString();
-// Update estimated duration
-const startTime = new Date(statusData.stages.upscale_img.started_at);
-const endTime = new Date();
-statusData.stages.upscale_img.duration = endTime - startTime;
-// Write updated status back to file
-fs.writeFileSync(statusFile, JSON.stringify(statusData, null, 2), 'utf8');
-console.log('✅ Upscaling completed successfully.');
+  // Update status to completed after command finishes
+  const endTime = new Date();
+  const startTime = new Date(statusData.stages.upscale_img.started_at);
+
+  statusData.stages.upscale_img.status = 'completed';
+  statusData.stages.upscale_img.completed_at = endTime.toISOString();
+  statusData.stages.upscale_img.duration = endTime - startTime;
+
+  fs.writeFileSync(statusFile, JSON.stringify(statusData, null, 2), 'utf8');
+  console.log('✅ Upscaling completed successfully.');
+});

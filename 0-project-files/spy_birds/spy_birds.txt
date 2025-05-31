@@ -1,0 +1,38 @@
+duration_estimation_milliseconds: 72000
+voice_instruction: THEATRICAL AND INCREASINGLY UNHINGED FOR SPEAKER 1, DEADPAN RATIONAL FOR SPEAKER 2
+
+Speaker 1:
+<p1 image_prompt="city street with dozens of pigeons on wires, all staring in the same direction">THEY’RE WATCHING US. ALWAYS WATCHING.</p1>
+<p2 image_prompt="pigeon wearing sunglasses and earpiece, cartoon-style">PIGEONS ARE GOVERNMENT DRONES. EVERY FLAP? A SIGNAL. EVERY COO? A CODE.</p2>
+
+Speaker 2:
+<p3 image_prompt="scientific diagram of pigeon anatomy, labeled organs and systems">No. Pigeons have organs, bones, digestive systems. They're birds. Actual birds. You can dissect one.</p3>
+
+Speaker 1:
+<p4 image_prompt="grainy photo of a pigeon on a power line with red arrows and circles drawn in MS Paint">THAT’S EXACTLY WHAT THEY WANT YOU TO THINK. LOOK AT THIS IMAGE. ENHANCE!</p4>
+<p5 image_prompt="x-ray of a pigeon, crudely photoshopped with wires and microchips">THIS ONE HAD A WIRE IN ITS LEG. YOU THINK THAT’S NATURAL? HUH? A WIRE?</p5>
+<p6 image_prompt="man in tinfoil hat hiding behind bush, holding binoculars, surrounded by pigeons">I’VE BEEN TRACKING THEM FOR WEEKS. THEY FOLLOW ME. TO THE GROCERY STORE. TO THE SHOWER.</p6>
+
+Speaker 2:
+<p7 image_prompt="scientist holding pigeon calmly, examining feathers">Have you considered they’re just attracted to bread? You eat a lot of carbs, don’t you?</p7>
+<p8 image_prompt="data graph showing bird migration patterns with GPS trackers">Real scientists tag birds for migration studies. With GPS. Not espionage. This is science, not 'Mission: Im-peck-able.'</p8>
+
+Speaker 1:
+<p9 image_prompt="pigeon flying through smoke like a missile, intense action shot">THAT’S WHAT MAKES THEM PERFECT SPIES. NO ONE SUSPECTS THE PIGEON.</p9>
+<p10 image_prompt="heavily redacted government document with 'PIGEON UNIT' barely visible">AND I FOUND THIS—STRAIGHT FROM THE DEEP WEB. CODE NAME: PROJECT FEATHERWATCH.</p10>
+
+Speaker 2:
+<p11 image_prompt="library interior, calm setting, person reading 'Pigeons for Dummies'">That's a fake document printed on the back of a Taco Bell receipt.</p11>
+<p12 image_prompt="AI-rendered hyper-realistic close-up of pigeon feet stepping on a French fry">They're just... birds. Some of them don’t even blink right. One pooped on my laptop yesterday. Spy tech doesn’t do that.</p12>
+
+Speaker 1:
+<p13 image_prompt="pigeon looking smug while perched on a surveillance camera">THAT’S JUST WHAT A SPY WOULD DO TO THROW YOU OFF.</p13>
+<p14 image_prompt="garage wall covered in string and photos of pigeons, chaotic crime-board style">OPEN YOUR EYES. THE FEATHERS, THE EYES, THE METALLIC GLINT IN THE BEAKS. I’VE CONNECTED THE DOTS. THEY REPORT BACK TO A CENTRAL PIGEON SERVER—PROBABLY IN OHIO.</p14>
+
+Speaker 2:
+<p15 image_prompt="child feeding pigeons in park, innocent and peaceful scene">...So your theory is: the government created birds to replace real birds… just to watch you buy frozen pizzas at 3 AM?</p15>
+<p16 image_prompt="Speaker 2 staring at camera like Jim from The Office, pigeon on their head">I’m not even sure you’re arguing anymore. I think you just need a nap.</p16>
+
+Speaker 1:
+<p17 image_prompt="dramatic courtroom sketch of pigeon flapping wildly on witness stand">NOBODY NAPS UNTIL THE TRUTH IS COOKED AND SERVED. WAKE UP, SHEEPLE. THE BIRDS ARE BUGGED.</p17>
+<p18 image_prompt="American flag waving behind group of pigeons marching in formation, surreal and cinematic">FIRST THEY CAME FOR THE SEED, THEN THEY CAME FOR OUR FREEDOM.</p18>

@@ -169,7 +169,7 @@ function delay(ms) {
     //   timeout: estimatedMilliseconds + 5000, // Wait for estimated duration + 10 seconds
     //   idleTime: 5000, // Wait for 5 seconds of network idle
     // })
-    await page.waitForSelector("audio", { visible: true, timeout: estimatedMilliseconds + 5000 });
+    await page.waitForSelector("audio", { visible: true, timeout: estimatedMilliseconds + 30000 });
     console.log("🔊 Audio element found!");
   } catch (error) {
     console.error("❌ Error while waiting for audio element:", error);
