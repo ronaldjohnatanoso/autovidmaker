@@ -33,28 +33,34 @@
       "duration_seconds": 0.792165
     },
     "image_gen": {
-      "status": "in_progress",
+      "status": "done",
       "started_at": "2025-05-31T08:32:06.867392Z",
       "completed_at": null,
       "duration": null,
       "error": null,
-      "metadata": {}
+      "metadata": {},
+      "ended_at": "2025-05-31T08:38:15.787828Z",
+      "duration_seconds": 368.920436
     },
     "upscale_img": {
-      "status": "pending",
-      "started_at": null,
+      "status": "done",
+      "started_at": "2025-05-31T08:38:15.788193Z",
       "completed_at": null,
       "duration": null,
       "error": null,
-      "metadata": {}
+      "metadata": {},
+      "ended_at": "2025-05-31T08:41:18.094404Z",
+      "duration_seconds": 182.306211
     },
     "img_stitch": {
-      "status": "pending",
-      "started_at": null,
+      "status": "in_progress",
+      "started_at": "2025-05-31T09:21:58.153727Z",
       "completed_at": null,
       "duration": null,
       "error": null,
-      "metadata": {}
+      "metadata": {},
+      "ended_at": "2025-05-31T09:21:09.943283Z",
+      "duration_seconds": 300.651478
     },
     "vid_edit": {
       "status": "pending",

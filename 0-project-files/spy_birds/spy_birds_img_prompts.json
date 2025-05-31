@@ -15,10 +15,10 @@
     "duration_adjusted": 3.536
   },
   {
-    "gen-status": "in-progress",
+    "gen-status": "done",
     "gen-start": "2025-05-31T08:32:36.717Z",
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-end": "2025-05-31T08:32:55.001Z",
+    "gen-duration": 18.284,
     "tag": "p2",
     "image_prompt": "pigeon wearing sunglasses and earpiece, cartoon-style",
     "spoken_text": "PIGEONS ARE GOVERNMENT DRONES. EVERY FLAP? A SIGNAL. EVERY COO? A CODE.",
@@ -30,10 +30,10 @@
     "duration_adjusted": 7.508
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:32:55.001Z",
+    "gen-end": "2025-05-31T08:33:14.909Z",
+    "gen-duration": 19.908,
     "tag": "p3",
     "image_prompt": "scientific diagram of pigeon anatomy, labeled organs and systems",
     "spoken_text": "No. Pigeons have organs, bones, digestive systems. They're birds. Actual birds. You can dissect one.",
@@ -45,10 +45,10 @@
     "duration_adjusted": 8.933
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:33:14.910Z",
+    "gen-end": "2025-05-31T08:33:33.548Z",
+    "gen-duration": 18.638,
     "tag": "p4",
     "image_prompt": "grainy photo of a pigeon on a power line with red arrows and circles drawn in MS Paint",
     "spoken_text": "THAT’S EXACTLY WHAT THEY WANT YOU TO THINK. LOOK AT THIS IMAGE. ENHANCE!",
@@ -60,10 +60,10 @@
     "duration_adjusted": 5.588
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:33:33.549Z",
+    "gen-end": "2025-05-31T08:33:53.637Z",
+    "gen-duration": 20.088,
     "tag": "p5",
     "image_prompt": "x-ray of a pigeon, crudely photoshopped with wires and microchips",
     "spoken_text": "THIS ONE HAD A WIRE IN ITS LEG. YOU THINK THAT’S NATURAL? HUH? A WIRE?",
@@ -75,10 +75,10 @@
     "duration_adjusted": 4.889
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:33:53.637Z",
+    "gen-end": "2025-05-31T08:34:11.746Z",
+    "gen-duration": 18.109,
     "tag": "p6",
     "image_prompt": "man in tinfoil hat hiding behind bush, holding binoculars, surrounded by pigeons",
     "spoken_text": "I’VE BEEN TRACKING THEM FOR WEEKS. THEY FOLLOW ME. TO THE GROCERY STORE. TO THE SHOWER.",
@@ -90,10 +90,10 @@
     "duration_adjusted": 5.93
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:34:11.746Z",
+    "gen-end": "2025-05-31T08:34:29.562Z",
+    "gen-duration": 17.816,
     "tag": "p7",
     "image_prompt": "scientist holding pigeon calmly, examining feathers",
     "spoken_text": "Have you considered they’re just attracted to bread? You eat a lot of carbs, don’t you?",
@@ -105,10 +105,10 @@
     "duration_adjusted": 6.07
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:34:29.562Z",
+    "gen-end": "2025-05-31T08:34:52.810Z",
+    "gen-duration": 23.248,
     "tag": "p8",
     "image_prompt": "data graph showing bird migration patterns with GPS trackers",
     "spoken_text": "Real scientists tag birds for migration studies. With GPS. Not espionage. This is science, not 'Mission: Im-peck-able.'",
@@ -120,10 +120,10 @@
     "duration_adjusted": 10.778
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:34:52.811Z",
+    "gen-end": "2025-05-31T08:35:10.111Z",
+    "gen-duration": 17.3,
     "tag": "p9",
     "image_prompt": "pigeon flying through smoke like a missile, intense action shot",
     "spoken_text": "THAT’S WHAT MAKES THEM PERFECT SPIES. NO ONE SUSPECTS THE PIGEON.",
@@ -135,10 +135,10 @@
     "duration_adjusted": 4.408
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:35:10.112Z",
+    "gen-end": "2025-05-31T08:35:28.341Z",
+    "gen-duration": 18.229,
     "tag": "p10",
     "image_prompt": "heavily redacted government document with 'PIGEON UNIT' barely visible",
     "spoken_text": "AND I FOUND THIS—STRAIGHT FROM THE DEEP WEB. CODE NAME: PROJECT FEATHERWATCH.",
@@ -150,10 +150,10 @@
     "duration_adjusted": 7.596
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:35:28.342Z",
+    "gen-end": "2025-05-31T08:35:53.228Z",
+    "gen-duration": 24.886,
     "tag": "p11",
     "image_prompt": "library interior, calm setting, person reading 'Pigeons for Dummies'",
     "spoken_text": "That's a fake document printed on the back of a Taco Bell receipt.",
@@ -165,10 +165,10 @@
     "duration_adjusted": 4.325
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:35:53.229Z",
+    "gen-end": "2025-05-31T08:36:13.292Z",
+    "gen-duration": 20.063,
     "tag": "p12",
     "image_prompt": "AI-rendered hyper-realistic close-up of pigeon feet stepping on a French fry",
     "spoken_text": "They're just... birds. Some of them don’t even blink right. One pooped on my laptop yesterday. Spy tech doesn’t do that.",
@@ -180,10 +180,10 @@
     "duration_adjusted": 8.33
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:36:13.292Z",
+    "gen-end": "2025-05-31T08:36:33.805Z",
+    "gen-duration": 20.513,
     "tag": "p13",
     "image_prompt": "pigeon looking smug while perched on a surveillance camera",
     "spoken_text": "THAT’S JUST WHAT A SPY WOULD DO TO THROW YOU OFF.",
@@ -195,10 +195,10 @@
     "duration_adjusted": 4.226
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:36:33.806Z",
+    "gen-end": "2025-05-31T08:36:54.658Z",
+    "gen-duration": 20.852,
     "tag": "p14",
     "image_prompt": "garage wall covered in string and photos of pigeons, chaotic crime-board style",
     "spoken_text": "OPEN YOUR EYES. THE FEATHERS, THE EYES, THE METALLIC GLINT IN THE BEAKS. I’VE CONNECTED THE DOTS. THEY REPORT BACK TO A CENTRAL PIGEON SERVER—PROBABLY IN OHIO.",
@@ -210,10 +210,10 @@
     "duration_adjusted": 13.038
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:36:54.658Z",
+    "gen-end": "2025-05-31T08:37:14.628Z",
+    "gen-duration": 19.97,
     "tag": "p15",
     "image_prompt": "child feeding pigeons in park, innocent and peaceful scene",
     "spoken_text": "...So your theory is: the government created birds to replace real birds… just to watch you buy frozen pizzas at 3 AM?",
@@ -225,10 +225,10 @@
     "duration_adjusted": 10.683
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:37:14.629Z",
+    "gen-end": "2025-05-31T08:37:33.207Z",
+    "gen-duration": 18.578,
     "tag": "p16",
     "image_prompt": "Speaker 2 staring at camera like Jim from The Office, pigeon on their head",
     "spoken_text": "I’m not even sure you’re arguing anymore. I think you just need a nap.",
@@ -240,10 +240,10 @@
     "duration_adjusted": 4.853
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:37:33.208Z",
+    "gen-end": "2025-05-31T08:37:56.356Z",
+    "gen-duration": 23.148,
     "tag": "p17",
     "image_prompt": "dramatic courtroom sketch of pigeon flapping wildly on witness stand",
     "spoken_text": "NOBODY NAPS UNTIL THE TRUTH IS COOKED AND SERVED. WAKE UP, SHEEPLE. THE BIRDS ARE BUGGED.",
@@ -255,10 +255,10 @@
     "duration_adjusted": 8.257
   },
   {
-    "gen-status": "pending",
-    "gen-start": null,
-    "gen-end": null,
-    "gen-duration": null,
+    "gen-status": "done",
+    "gen-start": "2025-05-31T08:37:56.356Z",
+    "gen-end": "2025-05-31T08:38:15.723Z",
+    "gen-duration": 19.367,
     "tag": "p18",
     "image_prompt": "American flag waving behind group of pigeons marching in formation, surreal and cinematic",
     "spoken_text": "FIRST THEY CAME FOR THE SEED, THEN THEY CAME FOR OUR FREEDOM.",

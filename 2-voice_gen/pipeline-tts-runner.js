@@ -173,8 +173,12 @@ function delay(ms) {
     console.log("🔊 Audio element found!");
   } catch (error) {
     console.error("❌ Error while waiting for audio element:", error);
-    await page.screenshot({ path: "error-screenshot.png", fullPage: true });
-    console.log("🖼 Error screenshot saved");
+    //save screenshot to the project folder
+    console.log("📸 Saving error screenshot...");
+    const screenshotPath = path.join(projectFolder, `${projectName}_error.png`);
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    console.log(`🖼 Screenshot saved to ${screenshotPath}`);
+
     throw error;
   }
 

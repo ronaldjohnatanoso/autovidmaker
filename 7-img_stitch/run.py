@@ -3,17 +3,25 @@ os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
 import sys
 import json
 import argparse
+import time
+import math
+import random
+import threading
+import subprocess
+import tempfile
+import shutil
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
-import threading
 from moviepy.editor import ImageClip, CompositeVideoClip, ColorClip, AudioFileClip, TextClip, CompositeAudioClip
 from moviepy.audio.fx.all import audio_loop
-import psutil  # Add this import for system monitoring
+import psutil
 
 # Constants
 TARGET_WIDTH = 1920
 TARGET_HEIGHT = 1080
 FPS = 24
+SEGMENT_DURATION = 15  # seconds per segment
 
 # Subtitle styling constants (updated for brain rot)
 SUBTITLE_FONTSIZE = 100  # Bigger text
@@ -40,7 +48,7 @@ PAN_SPEED = 0.05  # How fast to pan across the image
 
 # Background music constants
 BACKGROUND_MUSIC_FILE = "curious.mp3"  # Name of the background music file
-BACKGROUND_MUSIC_VOLUME = 0.4  # Volume level for background music (0.0 to 1.0)
+BACKGROUND_MUSIC_VOLUME = 0.5  # Volume level for background music (0.0 to 1.0)
 
 # Watermark constants
 WATERMARK_TEXT = "@unhingedWizard"  # The watermark text to display
@@ -74,6 +82,483 @@ GLITCH_INTENSITY = 20  # How far to jump (pixels)
 
 ENABLE_RAINBOW_TEXT = True  # Cycling subtitle colors
 RAINBOW_SPEED = 2.0  # Color cycles per second
+
+class VideoSegmentProcessor:
+    """Handles processing of individual video segments"""
+    
+    def __init__(self, project_name, base_dir, upscaled_images_dir, subtitles=None):
+        self.project_name = project_name
+        self.base_dir = base_dir
+        self.upscaled_images_dir = upscaled_images_dir
+        self.subtitles = subtitles or []
+        
+    def process_segment(self, segment_id, start_time, end_time, img_timestamps, temp_dir):
+        """Process a single video segment"""
+        print(f"Thread {threading.current_thread().name}: Processing segment {segment_id} ({start_time:.2f}s - {end_time:.2f}s)")
+        
+        try:
+            # Filter images and subtitles for this segment
+            segment_images = self._filter_images_for_segment(img_timestamps, start_time, end_time)
+            segment_subtitles = self._filter_subtitles_for_segment(start_time, end_time)
+            
+            if not segment_images:
+                print(f"No images found for segment {segment_id}")
+                return None
+            
+            # Create image clips for this segment
+            image_clips = []
+            for entry in segment_images:
+                clip = self._create_image_clip(entry)
+                if clip:
+                    # Adjust timing relative to segment start
+                    clip_start = max(0, float(entry['start']) - start_time)
+                    clip_end = min(end_time - start_time, float(entry['end_adjusted']) - start_time)
+                    clip = clip.set_start(clip_start).set_end(clip_end)
+                    image_clips.append(clip)
+            
+            # Create subtitle clips for this segment
+            subtitle_clips = []
+            for sub in segment_subtitles:
+                clip = self._create_subtitle_clip(sub)
+                if clip:
+                    # Adjust timing relative to segment start
+                    clip_start = max(0, sub['start'] - start_time)
+                    clip_end = min(end_time - start_time, sub['end'] - start_time)
+                    clip = clip.set_start(clip_start).set_end(clip_end)
+                    subtitle_clips.append(clip)
+            
+            # Create watermark for this segment
+            segment_duration = end_time - start_time
+            watermark_clip = create_watermark_clip(segment_duration)
+            
+            # Compose segment
+            all_clips = image_clips + subtitle_clips
+            if watermark_clip:
+                all_clips.append(watermark_clip)
+            
+            if not all_clips:
+                print(f"No clips created for segment {segment_id}")
+                return None
+            
+            segment_video = CompositeVideoClip(all_clips, size=(TARGET_WIDTH, TARGET_HEIGHT)).set_duration(segment_duration)
+            
+            # Render segment to temporary file
+            segment_filename = f"segment_{segment_id:03d}.mp4"
+            segment_path = os.path.join(temp_dir, segment_filename)
+            
+            print(f"Rendering segment {segment_id} to {segment_path}")
+            
+            # Try GPU encoding first, fallback to CPU if it fails
+            encoding_configs = [
+                {
+                    'name': 'NVIDIA GPU',
+                    'codec': 'h264_nvenc',
+                    'ffmpeg_params': [
+                        '-preset', 'fast',
+                        '-rc', 'vbr',
+                        '-cq', '23',
+                        '-gpu', '0'
+                    ]
+                },
+                {
+                    'name': 'CPU (fast)',
+                    'codec': 'libx264',
+                    'ffmpeg_params': [
+                        '-preset', 'fast',
+                        '-crf', '23'
+                    ]
+                },
+                {
+                    'name': 'CPU (ultrafast)',
+                    'codec': 'libx264',
+                    'ffmpeg_params': [
+                        '-preset', 'ultrafast',
+                        '-crf', '28'
+                    ]
+                }
+            ]
+            
+            success = False
+            for config in encoding_configs:
+                try:
+                    print(f"Trying {config['name']} encoding for segment {segment_id}")
+                    segment_video.write_videofile(
+                        segment_path,
+                        fps=FPS,
+                        codec=config['codec'],
+                        audio=False,  # We'll add audio later with FFmpeg
+                        ffmpeg_params=config['ffmpeg_params'],
+                        verbose=False,
+                        logger=None
+                    )
+                    print(f"Segment {segment_id} completed with {config['name']}: {segment_path}")
+                    success = True
+                    break
+                except Exception as e:
+                    print(f"{config['name']} encoding failed for segment {segment_id}: {e}")
+                    # Clean up partial file if it exists
+                    if os.path.exists(segment_path):
+                        os.unlink(segment_path)
+                    continue
+            
+            if not success:
+                print(f"All encoding methods failed for segment {segment_id}")
+                return None
+            
+            return segment_path
+            
+        except Exception as e:
+            print(f"Error processing segment {segment_id}: {e}")
+            traceback.print_exc()
+            return None
+    
+    def _filter_images_for_segment(self, img_timestamps, start_time, end_time):
+        """Filter images that appear in the given time segment"""
+        segment_images = []
+        for entry in img_timestamps:
+            img_start = float(entry['start'])
+            img_end = float(entry['end_adjusted'])
+            
+            # Check if image overlaps with segment
+            if img_start < end_time and img_end > start_time:
+                segment_images.append(entry)
+        
+        return segment_images
+    
+    def _filter_subtitles_for_segment(self, start_time, end_time):
+        """Filter subtitles that appear in the given time segment"""
+        segment_subtitles = []
+        for sub in self.subtitles:
+            # Check if subtitle overlaps with segment
+            if sub['start'] < end_time and sub['end'] > start_time:
+                segment_subtitles.append(sub)
+        
+        return segment_subtitles
+    
+    def _create_image_clip(self, entry):
+        """Create image clip with motion effects"""
+        return create_fitted_image_clip_threaded(entry, self.upscaled_images_dir)
+    
+    def _create_subtitle_clip(self, sub):
+        """Create subtitle clip with brain rot effects"""
+        return create_subtitle_clip_threaded(sub)
+
+def calculate_video_segments(img_timestamps, segment_duration=SEGMENT_DURATION):
+    """Calculate video segments based on total duration"""
+    if not img_timestamps:
+        return []
+    
+    # Find total video duration
+    max_end_time = max(float(entry['end_adjusted']) for entry in img_timestamps)
+    
+    # Calculate segments
+    segments = []
+    current_time = 0
+    segment_id = 0
+    
+    while current_time < max_end_time:
+        end_time = min(current_time + segment_duration, max_end_time)
+        segments.append({
+            'id': segment_id,
+            'start': current_time,
+            'end': end_time
+        })
+        current_time = end_time
+        segment_id += 1
+    
+    return segments
+
+def concat_video_segments(segment_paths, output_path):
+    """Use FFmpeg to concatenate video segments"""
+    if not segment_paths:
+        raise ValueError("No segments to concatenate")
+    
+    # Create temporary file list for FFmpeg
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        for segment_path in segment_paths:
+            f.write(f"file '{os.path.abspath(segment_path)}'\n")
+        filelist_path = f.name
+    
+    try:
+        # FFmpeg concat command
+        cmd = [
+            'ffmpeg', '-y',  # -y to overwrite output file
+            '-f', 'concat',
+            '-safe', '0',
+            '-i', filelist_path,
+            '-c', 'copy',  # Copy streams without re-encoding
+            output_path
+        ]
+        
+        print(f"Concatenating {len(segment_paths)} segments...")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            print(f"FFmpeg concat error: {result.stderr}")
+            return False
+        
+        print(f"Successfully concatenated video: {output_path}")
+        return True
+        
+    finally:
+        # Clean up temporary file list
+        if os.path.exists(filelist_path):
+            os.unlink(filelist_path)
+
+def add_audio_with_ffmpeg(video_path, audio_path, background_music_path, output_path):
+    """Use FFmpeg to add audio to the concatenated video"""
+    cmd = ['ffmpeg', '-y', '-i', video_path]
+    
+    filter_complex = []
+    audio_inputs = 1
+    
+    # Add main audio if available
+    if audio_path and os.path.exists(audio_path):
+        cmd.extend(['-i', audio_path])
+        audio_inputs += 1
+        main_audio_index = audio_inputs - 1
+        filter_complex.append(f"[{main_audio_index}:a]volume=1.0[main_audio]")
+    
+    # Add background music if available
+    if background_music_path and os.path.exists(background_music_path):
+        cmd.extend(['-i', background_music_path])
+        audio_inputs += 1
+        bg_music_index = audio_inputs - 1
+        
+        # Loop background music and set volume
+        if filter_complex:
+            filter_complex.append(f"[{bg_music_index}:a]aloop=loop=-1:size=2e+09,volume={BACKGROUND_MUSIC_VOLUME}[bg_music]")
+            filter_complex.append("[main_audio][bg_music]amix=inputs=2:duration=first:dropout_transition=2[audio_out]")
+            audio_map = "[audio_out]"
+        else:
+            filter_complex.append(f"[{bg_music_index}:a]aloop=loop=-1:size=2e+09,volume={BACKGROUND_MUSIC_VOLUME}[audio_out]")
+            audio_map = "[audio_out]"
+    else:
+        audio_map = "[main_audio]" if filter_complex else None
+    
+    # Add filter complex if we have audio processing
+    if filter_complex:
+        cmd.extend(['-filter_complex', ';'.join(filter_complex)])
+        cmd.extend(['-map', '0:v', '-map', audio_map])
+    elif audio_path and os.path.exists(audio_path):
+        # Simple case: just copy main audio
+        cmd.extend(['-map', '0:v', '-map', '1:a'])
+    else:
+        # No audio
+        cmd.extend(['-map', '0:v'])
+    
+    # Output settings
+    cmd.extend([
+        '-c:v', 'copy',  # Copy video stream
+        '-c:a', 'aac',   # Encode audio as AAC
+        '-shortest',     # End when shortest stream ends
+        output_path
+    ])
+    
+    print(f"Adding audio to video...")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        print(f"FFmpeg audio error: {result.stderr}")
+        return False
+    
+    print(f"Successfully added audio: {output_path}")
+    return True
+
+def main():
+    parser = argparse.ArgumentParser(description='Create video from images with timestamps')
+    parser.add_argument('project_name', help='Name of the project')
+    parser.add_argument('--render', action='store_true', help='Render the final video instead of preview')
+    parser.add_argument('--segment-duration', type=int, default=SEGMENT_DURATION, 
+                       help=f'Duration of each segment in seconds (default: {SEGMENT_DURATION})')
+    
+    args = parser.parse_args()
+    project_name = args.project_name
+    segment_duration = args.segment_duration
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = os.path.abspath(os.path.join(script_dir, "..", "0-project-files", project_name))
+
+    if not os.path.exists(base_dir):
+        print(f"Project directory '{base_dir}' does not exist.")
+        sys.exit(1)
+
+    upscaled_images_dir = os.path.join(base_dir, "upscaled_images")
+    if not os.path.exists(upscaled_images_dir):
+        print(f"Upscaled images directory '{upscaled_images_dir}' does not exist.")
+        sys.exit(1)
+
+    img_timestamps_file_path = os.path.join(base_dir, f'{project_name}_img_prompts.json')
+    if not os.path.exists(img_timestamps_file_path):
+        print(f"Image timestamps file '{img_timestamps_file_path}' does not exist.")
+        sys.exit(1)
+
+    # Load image timestamps
+    with open(img_timestamps_file_path, 'r') as f:
+        img_timestamps = json.load(f)
+
+    # Load subtitles if available
+    srt_path = os.path.join(base_dir, f"{project_name}_wordlevel.srt")
+    subtitles = []
+    if os.path.exists(srt_path):
+        print(f"Loading subtitles from {srt_path}")
+        subtitles = parse_srt(srt_path)
+
+    # Calculate video segments
+    segments = calculate_video_segments(img_timestamps, segment_duration)
+    print(f"Video will be processed in {len(segments)} segments of {segment_duration}s each")
+
+    if args.render:
+        # Create temporary directory for segments
+        temp_dir = tempfile.mkdtemp(prefix=f"{project_name}_segments_")
+        print(f"Using temporary directory: {temp_dir}")
+        
+        try:
+            # Create segment processor
+            processor = VideoSegmentProcessor(project_name, base_dir, upscaled_images_dir, subtitles)
+            
+            # Process segments in parallel
+            optimal_threads = min(get_optimal_thread_count(), len(segments))
+            print(f"Processing {len(segments)} segments using {optimal_threads} threads...")
+            
+            segment_paths = []
+            
+            with ThreadPoolExecutor(max_workers=optimal_threads) as executor:
+                # Submit all segment processing tasks
+                future_to_segment = {
+                    executor.submit(
+                        processor.process_segment,
+                        seg['id'], seg['start'], seg['end'], 
+                        img_timestamps, temp_dir
+                    ): seg for seg in segments
+                }
+                
+                # Collect results as they complete
+                completed_segments = {}
+                for future in as_completed(future_to_segment):
+                    segment = future_to_segment[future]
+                    result = future.result()
+                    if result:
+                        completed_segments[segment['id']] = result
+            
+            # Sort segments by ID to maintain order
+            for i in range(len(segments)):
+                if i in completed_segments:
+                    segment_paths.append(completed_segments[i])
+            
+            if not segment_paths:
+                print("No segments were successfully created!")
+                sys.exit(1)
+            
+            print(f"Successfully created {len(segment_paths)} video segments")
+            
+            # Concatenate video segments
+            video_no_audio_path = os.path.join(base_dir, f"{project_name}_no_audio.mp4")
+            if not concat_video_segments(segment_paths, video_no_audio_path):
+                print("Failed to concatenate video segments!")
+                sys.exit(1)
+            
+            # Add audio to the final video
+            output_path = os.path.join(base_dir, f"{project_name}.mp4")
+            audio_path = os.path.join(base_dir, f"{project_name}.wav")
+            background_music_path = os.path.join(script_dir, "..", "common_assets", BACKGROUND_MUSIC_FILE)
+            
+            if not add_audio_with_ffmpeg(video_no_audio_path, audio_path, background_music_path, output_path):
+                print("Failed to add audio to video!")
+                sys.exit(1)
+            
+            # Clean up temporary video file
+            if os.path.exists(video_no_audio_path):
+                os.unlink(video_no_audio_path)
+            
+            print(f"Final video created: {output_path}")
+            
+        finally:
+            # Clean up temporary directory
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+                print(f"Cleaned up temporary directory: {temp_dir}")
+    
+    else:
+        # Preview mode - create a short preview using existing logic
+        print("Preview mode - creating short preview...")
+        preview_segment = segments[0] if segments else {'start': 0, 'end': min(30, max(float(entry['end_adjusted']) for entry in img_timestamps))}
+        
+        processor = VideoSegmentProcessor(project_name, base_dir, upscaled_images_dir, subtitles)
+        
+        # Create a temporary preview
+        with tempfile.TemporaryDirectory() as temp_dir:
+            preview_path = processor.process_segment(
+                0, preview_segment['start'], preview_segment['end'], 
+                img_timestamps, temp_dir
+            )
+            
+            if preview_path:
+                # Use ffplay to preview the video
+                subprocess.run(['ffplay', '-autoexit', preview_path])
+
+def parse_srt(srt_path):
+    """Parse SRT file and return list of subtitle entries"""
+    subtitles = []
+    
+    with open(srt_path, 'r', encoding='utf-8') as f:
+        content = f.read().strip()
+    
+    blocks = content.split('\n\n')
+    
+    for block in blocks:
+        lines = block.strip().split('\n')
+        if len(lines) >= 3:
+            # Parse timestamp line (format: 00:00:00,000 --> 00:00:00,000)
+            timestamp_line = lines[1]
+            start_str, end_str = timestamp_line.split(' --> ')
+            
+            # Convert timestamp to seconds
+            def time_to_seconds(time_str):
+                time_str = time_str.replace(',', '.')
+                parts = time_str.split(':')
+                return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
+            
+            start_time = time_to_seconds(start_str)
+            end_time = time_to_seconds(end_str)
+            
+            # Join text lines (in case subtitle spans multiple lines)
+            text = ' '.join(lines[2:])
+            
+            subtitles.append({
+                'start': start_time,
+                'end': end_time,
+                'text': text
+            })
+    
+    return subtitles
+
+def get_optimal_thread_count():
+    """Calculate optimal thread count based on system resources"""
+    cpu_count = os.cpu_count()
+    
+    # Get current CPU usage
+    cpu_usage = psutil.cpu_percent(interval=1)
+    
+    # Get memory usage
+    memory = psutil.virtual_memory()
+    memory_usage = memory.percent
+    
+    # Conservative approach: use 75% of available cores, but adjust based on load
+    if cpu_usage > 80 or memory_usage > 85:
+        # System is busy, use fewer threads
+        optimal_threads = max(2, cpu_count // 4)
+    elif cpu_usage > 50 or memory_usage > 70:
+        # Moderate load, use half the cores
+        optimal_threads = max(4, cpu_count // 2)
+    else:
+        # Low load, use most cores but leave some headroom
+        optimal_threads = max(4, int(cpu_count * 0.75))
+    
+    print(f"System info: {cpu_count} cores, {cpu_usage:.1f}% CPU, {memory_usage:.1f}% memory")
+    print(f"Selected {optimal_threads} threads for processing")
+    
+    return optimal_threads
 
 def create_fitted_image_clip_threaded(entry, upscaled_images_dir):
     """Thread-safe version of image clip creation with motion effects"""
@@ -127,11 +612,11 @@ def create_fitted_image_clip_threaded(entry, upscaled_images_dir):
         bg = ColorClip(size=(TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0), duration=duration)
 
         # Composite with centered image on black background
-        final = CompositeVideoClip([bg, img_clip.set_position("center")]).set_start(start).set_end(end)
+        # Don't set start/end here - that will be handled in the segment processor
+        final = CompositeVideoClip([bg, img_clip.set_position("center")])
         return final
     except Exception as e:
         print(f"Error processing {image_path}: {e}")
-        import traceback
         traceback.print_exc()
         return None
 
@@ -472,234 +957,10 @@ def create_watermark_clip(duration):
         
     except Exception as e:
         print(f"Error creating watermark: {e}")
-        import traceback
         traceback.print_exc()
         return None
 
-def parse_srt(srt_path):
-    """Parse SRT file and return list of subtitle entries"""
-    subtitles = []
-    
-    with open(srt_path, 'r', encoding='utf-8') as f:
-        content = f.read().strip()
-    
-    blocks = content.split('\n\n')
-    
-    for block in blocks:
-        lines = block.strip().split('\n')
-        if len(lines) >= 3:
-            # Parse timestamp line (format: 00:00:00,000 --> 00:00:00,000)
-            timestamp_line = lines[1]
-            start_str, end_str = timestamp_line.split(' --> ')
-            
-            # Convert timestamp to seconds
-            def time_to_seconds(time_str):
-                time_str = time_str.replace(',', '.')
-                parts = time_str.split(':')
-                return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
-            
-            start_time = time_to_seconds(start_str)
-            end_time = time_to_seconds(end_str)
-            
-            # Join text lines (in case subtitle spans multiple lines)
-            text = ' '.join(lines[2:])
-            
-            subtitles.append({
-                'start': start_time,
-                'end': end_time,
-                'text': text
-            })
-    
-    return subtitles
-
-def get_optimal_thread_count():
-    """Calculate optimal thread count based on system resources"""
-    cpu_count = os.cpu_count()
-    
-    # Get current CPU usage
-    cpu_usage = psutil.cpu_percent(interval=1)
-    
-    # Get memory usage
-    memory = psutil.virtual_memory()
-    memory_usage = memory.percent
-    
-    # Conservative approach: use 75% of available cores, but adjust based on load
-    if cpu_usage > 80 or memory_usage > 85:
-        # System is busy, use fewer threads
-        optimal_threads = max(2, cpu_count // 4)
-    elif cpu_usage > 50 or memory_usage > 70:
-        # Moderate load, use half the cores
-        optimal_threads = max(4, cpu_count // 2)
-    else:
-        # Low load, use most cores but leave some headroom
-        optimal_threads = max(4, int(cpu_count * 0.75))
-    
-    print(f"System info: {cpu_count} cores, {cpu_usage:.1f}% CPU, {memory_usage:.1f}% memory")
-    print(f"Selected {optimal_threads} threads for processing")
-    
-    return optimal_threads
-
-def main():
-    parser = argparse.ArgumentParser(description='Create video from images with timestamps')
-    parser.add_argument('project_name', help='Name of the project')
-    parser.add_argument('--render', action='store_true', help='Render the final video instead of preview')
-    
-    args = parser.parse_args()
-    project_name = args.project_name
-
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    base_dir = os.path.abspath(os.path.join(script_dir, "..", "0-project-files", project_name))
-
-    if not os.path.exists(base_dir):
-        print(f"Project directory '{base_dir}' does not exist.")
-        sys.exit(1)
-
-    upscaled_images_dir = os.path.join(base_dir, "upscaled_images")
-    if not os.path.exists(upscaled_images_dir):
-        print(f"Upscaled images directory '{upscaled_images_dir}' does not exist.")
-        sys.exit(1)
-
-    img_timestamps_file_path = os.path.join(base_dir, f'{project_name}_img_prompts.json')
-    if not os.path.exists(img_timestamps_file_path):
-        print(f"Image timestamps file '{img_timestamps_file_path}' does not exist.")
-        sys.exit(1)
-
-    # Check for audio file
-    audio_path = os.path.join(base_dir, "ocean_debate.wav")
-    if not os.path.exists(audio_path):
-        print(f"Warning: Audio file '{audio_path}' not found. Video will have no audio.")
-        audio_clip = None
-    else:
-        audio_clip = AudioFileClip(audio_path)
-
-    # Check for background music file
-    background_music_path = os.path.join(script_dir, "..", "common_assets", BACKGROUND_MUSIC_FILE)
-    if not os.path.exists(background_music_path):
-        print(f"Warning: Background music file '{background_music_path}' not found.")
-        background_music_clip = None
-    else:
-        print(f"Loading background music from {background_music_path}")
-        background_music_clip = AudioFileClip(background_music_path)
-
-    # Check for SRT subtitle file
-    srt_path = os.path.join(base_dir, f"{project_name}_wordlevel.srt")
-    if not os.path.exists(srt_path):
-        print(f"Warning: SRT file '{srt_path}' not found. Video will have no subtitles.")
-        subtitle_clips = []
-    else:
-        print(f"Loading subtitles from {srt_path}")
-        subtitles = parse_srt(srt_path)
-
-    with open(img_timestamps_file_path, 'r') as f:
-        img_timestamps = json.load(f)
-
-    # Get optimal thread count based on system load
-    optimal_threads = get_optimal_thread_count()
-    max_workers = min(optimal_threads, len(img_timestamps))
-    
-    print(f"Processing {len(img_timestamps)} images using {max_workers} threads...")
-    
-    # Process image clips in parallel
-    clips = []
-    
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all image processing tasks
-        future_to_entry = {
-            executor.submit(create_fitted_image_clip_threaded, entry, upscaled_images_dir): entry 
-            for entry in img_timestamps
-        }
-        
-        # Collect results as they complete
-        for future in as_completed(future_to_entry):
-            clip = future.result()
-            if clip is not None:
-                clips.append(clip)
-    
-    # Sort clips by start time to maintain proper order
-    clips.sort(key=lambda x: x.start)
-    
-    if not clips:
-        print("No valid image clips found. Exiting.")
-        sys.exit(1)
-
-    # Process subtitles in parallel if they exist
-    subtitle_clips = []
-    if subtitles:
-        # Use fewer threads for subtitles (text rendering is less CPU intensive but more memory intensive)
-        subtitle_threads = min(max(2, optimal_threads // 2), len(subtitles))
-        print(f"Processing {len(subtitles)} subtitles using {subtitle_threads} threads...")
-        
-        with ThreadPoolExecutor(max_workers=subtitle_threads) as executor:
-            future_to_sub = {
-                executor.submit(create_subtitle_clip_threaded, sub): sub 
-                for sub in subtitles
-            }
-            
-            for future in as_completed(future_to_sub):
-                subtitle_clip = future.result()
-                if subtitle_clip is not None:
-                    subtitle_clips.append(subtitle_clip)
-        
-        # Sort subtitle clips by start time
-        subtitle_clips.sort(key=lambda x: x.start)
-
-    print(f"Created {len(clips)} image clips and {len(subtitle_clips)} subtitle clips")
-    
-    # Create watermark clip
-    video_duration = clips[-1].end if clips else 10.0  # Fallback duration
-    watermark_clip = create_watermark_clip(video_duration)
-    
-    # Compose all clips in timeline
-    all_clips = clips + subtitle_clips
-    if watermark_clip:
-        all_clips.append(watermark_clip)
-        print("Added watermark to video")
-    
-    final_video = CompositeVideoClip(all_clips, size=(TARGET_WIDTH, TARGET_HEIGHT)).set_duration(clips[-1].end)
-    
-    # Add audio if available
-    if audio_clip and background_music_clip:
-        # Loop background music to match video duration
-        video_duration = final_video.duration
-        background_music_looped = audio_loop(background_music_clip, duration=video_duration).volumex(BACKGROUND_MUSIC_VOLUME)
-        
-        # Composite audio: main audio + background music
-        composite_audio = CompositeAudioClip([audio_clip, background_music_looped])
-        final_video = final_video.set_audio(composite_audio)
-    elif audio_clip:
-        # Only main audio
-        final_video = final_video.set_audio(audio_clip)
-    elif background_music_clip:
-        # Only background music
-        video_duration = final_video.duration
-        background_music_looped = audio_loop(background_music_clip, duration=video_duration).volumex(BACKGROUND_MUSIC_VOLUME)
-        final_video = final_video.set_audio(background_music_looped)
-
-    if args.render:
-        output_path = os.path.join(base_dir, f"{project_name}.mp4")
-        print(f"Rendering final video to {output_path} ...")
-        
-        # GPU-accelerated encoding using NVENC
-        print("Using GPU acceleration (NVENC)...")
-        final_video.write_videofile(
-            output_path, 
-            fps=FPS, 
-            codec='h264_nvenc',  # NVIDIA GPU encoder
-            audio_codec='aac' if audio_clip else None,
-            ffmpeg_params=[
-                '-preset', 'fast',      # Encoding speed preset
-                '-rc', 'vbr',          # Variable bitrate
-                '-cq', '23',           # Quality level (lower = better quality)
-                '-gpu', '0'            # Use GPU 0
-            ]
-        )
-        print("GPU rendering completed!")
-    else:
-        print("Launching preview...")
-        final_video.preview(fps=FPS)
-
 if __name__ == "__main__":
-    import time 
     start_time = time.time()
     main()
     end_time = time.time()
