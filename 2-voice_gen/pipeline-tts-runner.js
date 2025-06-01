@@ -3,9 +3,13 @@ const fs = require("fs");
 const path = require("path");
 const { execSync, spawn } = require("child_process");
 
+const start_time = Date.now();
+let end_time = null
 
 const killChromeScript = path.join(__dirname, "kill-chrome-debug.sh");
 const launchChromeScript = path.join(__dirname, "load-chrome.sh");
+
+const TIME_OFFSET = (1000 * 60) * 5; // 5 mins offset for network idle wait
 
 
 function runShellScriptSync(scriptPath, name) {
@@ -176,7 +180,7 @@ function delay(ms) {
     //   timeout: estimatedMilliseconds + 5000, // Wait for estimated duration + 10 seconds
     //   idleTime: 5000, // Wait for 5 seconds of network idle
     // })
-    await page.waitForSelector("audio", { visible: true, timeout: estimatedMilliseconds + 30000 });
+    await page.waitForSelector("audio", { visible: true, timeout: estimatedMilliseconds + TIME_OFFSET});
     console.log("🔊 Audio element found!");
   } catch (error) {
     console.error("❌ Error while waiting for audio element:", error);
@@ -185,7 +189,8 @@ function delay(ms) {
     const screenshotPath = path.join(projectFolder, `${projectName}_error.png`);
     await page.screenshot({ path: screenshotPath, fullPage: true });
     console.log(`🖼 Screenshot saved to ${screenshotPath}`);
-
+    end_time = Date.now();
+    console.error(`⏱️ Total time taken: ${(end_time - start_time) / 1000} seconds`);
     throw error;
   }
 
@@ -219,4 +224,6 @@ function delay(ms) {
 
 
   runShellScriptSync(killChromeScript, "kill-chrome-debug.sh");
+  end_time = Date.now();
+  console.log(`⏱️ Total time taken: ${(end_time - start_time) / 1000} seconds`);
 })();

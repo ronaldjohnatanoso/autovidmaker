@@ -1,4 +1,5 @@
-include an estimated time in the script to be used 
-end 
+make the structured shit a json so llm is forced to follow the structure
 
-too large gaps in between captions
+to encourage persistence, just make every character superman ,or any well known person
+
+in the script json, dont use "" , use another special character, we only use that when producing the raw script

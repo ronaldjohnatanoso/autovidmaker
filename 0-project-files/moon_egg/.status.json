@@ -1,54 +1,66 @@
 {
-  "created_at": "2025-05-31T13:26:27.499353Z",
+  "created_at": "2025-05-31T14:31:40.638850Z",
   "current_stage": "voice_gen",
   "stages": {
     "voice_gen": {
-      "status": "in_progress",
-      "started_at": "2025-05-31T13:37:45.922407Z",
+      "status": "done",
+      "started_at": "2025-05-31T14:31:44.261484Z",
       "completed_at": null,
       "duration": null,
       "error": null,
-      "metadata": {}
+      "metadata": {},
+      "ended_at": "2025-05-31T14:33:53.717533Z",
+      "duration_seconds": 129.456049
     },
     "captions": {
-      "status": "pending",
-      "started_at": null,
+      "status": "done",
+      "started_at": "2025-05-31T14:33:53.718075Z",
       "completed_at": null,
       "duration": null,
       "error": null,
-      "metadata": {}
+      "metadata": {},
+      "ended_at": "2025-05-31T14:34:05.605326Z",
+      "duration_seconds": 11.887251
     },
     "img_prompts": {
-      "status": "pending",
-      "started_at": null,
+      "status": "done",
+      "started_at": "2025-05-31T14:34:05.606069Z",
       "completed_at": null,
       "duration": null,
       "error": null,
-      "metadata": {}
+      "metadata": {},
+      "ended_at": "2025-05-31T14:34:06.475118Z",
+      "duration_seconds": 0.869049
     },
     "image_gen": {
-      "status": "pending",
-      "started_at": null,
+      "status": "done",
+      "started_at": "2025-05-31T14:34:06.475648Z",
       "completed_at": null,
       "duration": null,
       "error": null,
-      "metadata": {}
+      "metadata": {},
+      "ended_at": "2025-05-31T14:39:47.312666Z",
+      "duration_seconds": 340.837018
     },
     "upscale_img": {
-      "status": "pending",
-      "started_at": null,
+      "status": "done",
+      "started_at": "2025-05-31T14:39:47.313223Z",
       "completed_at": null,
       "duration": null,
       "error": null,
-      "metadata": {}
+      "metadata": {},
+      "ended_at": "2025-05-31T14:42:45.329912Z",
+      "duration_seconds": 178.016689
     },
     "img_stitch": {
-      "status": "pending",
-      "started_at": null,
+      "status": "done",
+      "started_at": "2025-05-31T14:42:45.330389Z",
       "completed_at": null,
       "duration": null,
       "error": null,
-      "metadata": {}
+      "metadata": {},
+      "ended_at": "2025-05-31T14:47:48.145058Z",
+      "duration_seconds": 302.814669
     },
     "vid_edit": {
       "status": "pending",

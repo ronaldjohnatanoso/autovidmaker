@@ -1,0 +1,14 @@
+{
+    "duration_seconds": {
+        "description" : "Estimated duration of the voice over alone",
+        "value": 180
+    },
+    "voice_instruction": {
+        "description": "Instructions for how the voice should read the script for immersion",
+        "value": "Read aloud screaming."
+    },
+    "script": {
+        "description": "The script for the voice over",
+        "value": ''''
+    }
+}

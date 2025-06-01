@@ -80,7 +80,7 @@ ENABLE_GLITCH_EFFECT = True  # Random glitch jumps
 GLITCH_PROBABILITY = 0.01  # Chance per frame (10%)
 GLITCH_INTENSITY = 20  # How far to jump (pixels)
 
-ENABLE_RAINBOW_TEXT = True  # Cycling subtitle colors
+ENABLE_RAINBOW_TEXT = False  # Cycling subtitle colors
 RAINBOW_SPEED = 2.0  # Color cycles per second
 
 class VideoSegmentProcessor:

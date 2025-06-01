@@ -5,17 +5,15 @@ import json
 import argparse
 import time
 import math
-import random
 import threading
 import subprocess
 import tempfile
 import shutil
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from functools import partial
-from moviepy.editor import ImageClip, CompositeVideoClip, ColorClip, AudioFileClip, TextClip, CompositeAudioClip
-from moviepy.audio.fx.all import audio_loop
+from moviepy.editor import ImageClip, CompositeVideoClip, ColorClip, AudioFileClip, TextClip
+import numpy as np
 import psutil
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Constants
 TARGET_WIDTH = 1920
@@ -60,305 +58,626 @@ WATERMARK_PADDING = 10  # Padding around the text
 WATERMARK_MARGIN = 20  # Distance from bottom-right corner
 
 # Brain rot effect constants
-ENABLE_BREATHING_EFFECT = True  # Subtle scale pulsing
-BREATHING_INTENSITY = 0.05  # How much to scale (5% up and down)
-BREATHING_SPEED = 3.0  # Cycles per second (faster = more chaotic)
+ENABLE_BREATHING_EFFECT = False  # Disable breathing effect
+BREATHING_INTENSITY = 0.01  # Reduced even more
+BREATHING_SPEED = 0.5  # Much slower
 
-ENABLE_ROTATION_DRIFT = True  # Very subtle rotation
-ROTATION_RANGE = 2.0  # Max rotation in degrees (increase for more chaos)
+ENABLE_ROTATION_DRIFT = True  # Enable rotation drift
+ROTATION_RANGE = 3.0  # INCREASED rotation for visibility
 
 # New brain rot effects
-ENABLE_SHAKE_EFFECT = True  # Random camera shake
-SHAKE_INTENSITY = 8.0  # How much shake (pixels)
-SHAKE_FREQUENCY = 12.0  # Shakes per second
+ENABLE_SHAKE_EFFECT = False  # DISABLE SHAKE - this was causing vibration
+SHAKE_INTENSITY = 2.0  # Reduced shake
+SHAKE_FREQUENCY = 3.0  # Much less frequent
 
-ENABLE_ZOOM_PULSE = True  # Rapid zoom in/out
-ZOOM_PULSE_INTENSITY = 0.1  # How much to zoom
-ZOOM_PULSE_SPEED = 4.0  # Pulses per second
+ENABLE_ZOOM_PULSE = True  # Disable zoom pulse
+ZOOM_PULSE_INTENSITY = 0.1  # 
+ZOOM_PULSE_SPEED = 4.0  # 
 
-ENABLE_GLITCH_EFFECT = True  # Random glitch jumps
-GLITCH_PROBABILITY = 0.01  # Chance per frame (10%)
-GLITCH_INTENSITY = 20  # How far to jump (pixels)
+ENABLE_GLITCH_EFFECT = False  # Disable glitch
+GLITCH_PROBABILITY = 0.001  # Much lower chance
+GLITCH_INTENSITY = 5  # Reduced intensity
 
-ENABLE_RAINBOW_TEXT = True  # Cycling subtitle colors
-RAINBOW_SPEED = 2.0  # Color cycles per second
+ENABLE_RAINBOW_TEXT = False  # Disable rainbow text for now to avoid errors
 
-class VideoSegmentProcessor:
-    """Handles processing of individual video segments"""
+class GlobalMotionState:
+    """Manages motion state across the ENTIRE video timeline - shared between all threads"""
     
-    def __init__(self, project_name, base_dir, upscaled_images_dir, subtitles=None):
+    def __init__(self, img_timestamps, total_duration):
+        self.image_configs = {}
+        self.total_duration = total_duration
+        self._precompute_motion_configs(img_timestamps)
+    
+    def _precompute_motion_configs(self, img_timestamps):
+        """Pre-calculate motion parameters for each image across ENTIRE timeline"""
+        for entry in img_timestamps:
+            tag = entry['tag']
+            start_time = float(entry['start'])
+            end_time = float(entry['end_adjusted'])
+            duration = end_time - start_time
+            
+            # Use tag as seed for consistency
+            seed_value = hash(tag) % 2147483647
+            np.random.seed(seed_value)
+            
+            config = {
+                'tag': tag,
+                'start_time': start_time,
+                'end_time': end_time,
+                'duration': duration,
+                'seed': seed_value
+            }
+            
+            # Pre-compute motion parameters based on type
+            if MOTION_TYPE == 'ken_burns':
+                config.update({
+                    'start_zoom': np.random.uniform(ZOOM_RANGE[0], ZOOM_RANGE[0] + 0.05),
+                    'end_zoom': np.random.uniform(ZOOM_RANGE[1] - 0.05, ZOOM_RANGE[1]),
+                    # REMOVE X/Y movement - keep centered
+                    'start_x': 0,  # No horizontal movement
+                    'end_x': 0,    # No horizontal movement
+                    'start_y': 0,  # No vertical movement
+                    'end_y': 0     # No vertical movement
+                })
+            elif MOTION_TYPE == 'zoom_pan':
+                config.update({
+                    'zoom_in': np.random.choice([True, False]),
+                    'pan_x': 0  # Remove panning for center zoom
+                })
+            elif MOTION_TYPE == 'drift':
+                config.update({
+                    'drift_angle': 0,  # No drift
+                    'drift_distance': 0  # No drift distance
+                })
+            
+            # Pre-compute brain rot parameters
+            if ENABLE_ROTATION_DRIFT:
+                config['rotation_direction'] = np.random.choice([-1, 1])
+            
+            self.image_configs[tag] = config
+    
+    def get_motion_transform(self, tag, absolute_time):
+        """Get motion transform for given tag at absolute video time (thread-safe)"""
+        if tag not in self.image_configs:
+            return {'zoom': 1.0, 'position': ('center', 'center'), 'rotation': 0}
+        
+        config = self.image_configs[tag]
+        
+        # If we're outside the image's time range, return default
+        if absolute_time < config['start_time'] or absolute_time > config['end_time']:
+            return {'zoom': 1.0, 'position': ('center', 'center'), 'rotation': 0}
+        
+        local_time = absolute_time - config['start_time']
+        progress = local_time / config['duration'] if config['duration'] > 0 else 0
+        progress = np.clip(progress, 0.0, 1.0)
+        
+        transform = {'zoom': 1.0, 'position': ('center', 'center'), 'rotation': 0}
+        
+        # Apply motion based on type - CENTER ZOOM ONLY
+        if MOTION_TYPE == 'ken_burns':
+            zoom = config['start_zoom'] + (config['end_zoom'] - config['start_zoom']) * progress
+            # NO X/Y movement - keep perfectly centered
+            transform.update({
+                'zoom': zoom,
+                'position': ('center', 'center')  # Always center
+            })
+        
+        elif MOTION_TYPE == 'zoom_pan':
+            start_zoom = ZOOM_RANGE[1] if config['zoom_in'] else ZOOM_RANGE[0]
+            end_zoom = ZOOM_RANGE[0] if config['zoom_in'] else ZOOM_RANGE[1]
+            zoom = start_zoom + (end_zoom - start_zoom) * progress
+            # NO panning - keep centered
+            transform.update({
+                'zoom': zoom,
+                'position': ('center', 'center')  # Always center
+            })
+        
+        elif MOTION_TYPE == 'drift':
+            # NO drift - just zoom
+            zoom = 1.0 + (0.1 * progress)  # Slight zoom
+            transform.update({
+                'zoom': zoom,
+                'position': ('center', 'center')  # Always center
+            })
+        
+        # Add subtle breathing effect if enabled (but keep centered)
+        if ENABLE_BREATHING_EFFECT:
+            breathing_cycle = np.sin(absolute_time * 2 * np.pi * BREATHING_SPEED)
+            transform['zoom'] *= (1.0 + breathing_cycle * BREATHING_INTENSITY)
+        
+        # FIXED rotation - make it more visible
+        if ENABLE_ROTATION_DRIFT:
+            rotation = config['rotation_direction'] * ROTATION_RANGE * progress  # REMOVED the 0.1 multiplier
+            transform['rotation'] = rotation
+        
+        return transform
+
+class SegmentProcessor:
+    """Processes individual video segments with global motion continuity"""
+    
+    def __init__(self, global_motion_state, project_name, base_dir, upscaled_images_dir, subtitles):
+        self.global_motion_state = global_motion_state
         self.project_name = project_name
         self.base_dir = base_dir
         self.upscaled_images_dir = upscaled_images_dir
-        self.subtitles = subtitles or []
-        
-    def process_segment(self, segment_id, start_time, end_time, img_timestamps, temp_dir):
-        """Process a single video segment"""
-        print(f"Thread {threading.current_thread().name}: Processing segment {segment_id} ({start_time:.2f}s - {end_time:.2f}s)")
-        
-        try:
-            # Filter images and subtitles for this segment
-            segment_images = self._filter_images_for_segment(img_timestamps, start_time, end_time)
-            segment_subtitles = self._filter_subtitles_for_segment(start_time, end_time)
-            
-            if not segment_images:
-                print(f"No images found for segment {segment_id}")
-                return None
-            
-            # Create image clips for this segment
-            image_clips = []
-            for entry in segment_images:
-                clip = self._create_image_clip_with_segment_timing(entry, start_time)
-                if clip:
-                    # Adjust timing relative to segment start
-                    clip_start = max(0, float(entry['start']) - start_time)
-                    clip_end = min(end_time - start_time, float(entry['end_adjusted']) - start_time)
-                    clip = clip.set_start(clip_start).set_end(clip_end)
-                    image_clips.append(clip)
-            
-            # Create subtitle clips for this segment
-            subtitle_clips = []
-            for sub in segment_subtitles:
-                clip = self._create_subtitle_clip(sub)
-                if clip:
-                    # Adjust timing relative to segment start
-                    clip_start = max(0, sub['start'] - start_time)
-                    clip_end = min(end_time - start_time, sub['end'] - start_time)
-                    clip = clip.set_start(clip_start).set_end(clip_end)
-                    subtitle_clips.append(clip)
-            
-            # Create watermark for this segment
-            segment_duration = end_time - start_time
-            watermark_clip = create_watermark_clip(segment_duration)
-            
-            # Compose segment
-            all_clips = image_clips + subtitle_clips
-            if watermark_clip:
-                all_clips.append(watermark_clip)
-            
-            if not all_clips:
-                print(f"No clips created for segment {segment_id}")
-                return None
-            
-            segment_video = CompositeVideoClip(all_clips, size=(TARGET_WIDTH, TARGET_HEIGHT)).set_duration(segment_duration)
-            
-            # Render segment to temporary file
-            segment_filename = f"segment_{segment_id:03d}.mp4"
-            segment_path = os.path.join(temp_dir, segment_filename)
-            
-            print(f"Rendering segment {segment_id} to {segment_path}")
-            
-            # Try GPU encoding first, fallback to CPU if it fails
-            encoding_configs = [
-                {
-                    'name': 'NVIDIA GPU',
-                    'codec': 'h264_nvenc',
-                    'ffmpeg_params': [
-                        '-preset', 'fast',
-                        '-rc', 'vbr',
-                        '-cq', '23',
-                        '-gpu', '0'
-                    ]
-                },
-                {
-                    'name': 'CPU (fast)',
-                    'codec': 'libx264',
-                    'ffmpeg_params': [
-                        '-preset', 'fast',
-                        '-crf', '23'
-                    ]
-                },
-                {
-                    'name': 'CPU (ultrafast)',
-                    'codec': 'libx264',
-                    'ffmpeg_params': [
-                        '-preset', 'ultrafast',
-                        '-crf', '28'
-                    ]
-                }
-            ]
-            
-            success = False
-            for config in encoding_configs:
-                try:
-                    print(f"Trying {config['name']} encoding for segment {segment_id}")
-                    segment_video.write_videofile(
-                        segment_path,
-                        fps=FPS,
-                        codec=config['codec'],
-                        audio=False,  # We'll add audio later with FFmpeg
-                        ffmpeg_params=config['ffmpeg_params'],
-                        verbose=False,
-                        logger=None
-                    )
-                    print(f"Segment {segment_id} completed with {config['name']}: {segment_path}")
-                    success = True
-                    break
-                except Exception as e:
-                    print(f"{config['name']} encoding failed for segment {segment_id}: {e}")
-                    # Clean up partial file if it exists
-                    if os.path.exists(segment_path):
-                        os.unlink(segment_path)
-                    continue
-            
-            if not success:
-                print(f"All encoding methods failed for segment {segment_id}")
-                return None
-            
-            return segment_path
-            
-        except Exception as e:
-            print(f"Error processing segment {segment_id}: {e}")
-            traceback.print_exc()
-            return None
+        self.subtitles = subtitles
     
-    def _filter_images_for_segment(self, img_timestamps, start_time, end_time):
-        """Filter images that appear in the given time segment"""
+    def process_segment(self, segment_start, segment_end, segment_index, img_timestamps):
+        """Process a single segment with continuous motion"""
+        print(f"Processing segment {segment_index}: {segment_start:.2f}s - {segment_end:.2f}s")
+        
+        segment_duration = segment_end - segment_start
+        all_clips = []
+        
+        # Filter images for this segment
         segment_images = []
         for entry in img_timestamps:
             img_start = float(entry['start'])
             img_end = float(entry['end_adjusted'])
             
-            # Check if image overlaps with segment
-            if img_start < end_time and img_end > start_time:
-                segment_images.append(entry)
+            # Check if image overlaps with this segment
+            if img_start < segment_end and img_end > segment_start:
+                # Adjust timing relative to segment
+                adjusted_entry = entry.copy()
+                adjusted_entry['segment_start'] = max(0, img_start - segment_start)
+                adjusted_entry['segment_end'] = min(segment_duration, img_end - segment_start)
+                adjusted_entry['absolute_start'] = img_start
+                segment_images.append(adjusted_entry)
         
-        return segment_images
-    
-    def _filter_subtitles_for_segment(self, start_time, end_time):
-        """Filter subtitles that appear in the given time segment"""
+        # Create image clips for this segment
+        for entry in segment_images:
+            clip = self._create_segment_image_clip(entry, segment_start, segment_duration)
+            if clip:
+                all_clips.append(clip)
+        
+        # Filter subtitles for this segment
         segment_subtitles = []
         for sub in self.subtitles:
-            # Check if subtitle overlaps with segment
-            if sub['start'] < end_time and sub['end'] > start_time:
-                segment_subtitles.append(sub)
+            if sub['start'] < segment_end and sub['end'] > segment_start:
+                adjusted_sub = sub.copy()
+                adjusted_sub['segment_start'] = max(0, sub['start'] - segment_start)
+                adjusted_sub['segment_end'] = min(segment_duration, sub['end'] - segment_start)
+                adjusted_sub['absolute_start'] = sub['start']
+                segment_subtitles.append(adjusted_sub)
         
-        return segment_subtitles
+        # Create subtitle clips for this segment
+        for sub in segment_subtitles:
+            clip = self._create_segment_subtitle_clip(sub, segment_start)
+            if clip:
+                all_clips.append(clip)
+        
+        # Create watermark for this segment
+        watermark_clip = self._create_segment_watermark(segment_duration)
+        if watermark_clip:
+            all_clips.append(watermark_clip)
+        
+        # Compose segment video
+        if not all_clips:
+            # Create black segment if no content
+            bg = ColorClip(size=(TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0), duration=segment_duration)
+            segment_video = bg
+        else:
+            # Create black background first, then add all clips on top
+            bg = ColorClip(size=(TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0), duration=segment_duration)
+            all_clips.insert(0, bg)  # Add background as first layer
+            segment_video = CompositeVideoClip(all_clips, size=(TARGET_WIDTH, TARGET_HEIGHT))
+            segment_video = segment_video.set_duration(segment_duration)
+        
+        # Render segment to file
+        temp_dir = tempfile.mkdtemp()
+        segment_path = os.path.join(temp_dir, f"segment_{segment_index:04d}.mp4")
+        
+        try:
+            segment_video.write_videofile(
+                segment_path,
+                fps=FPS,
+                codec='libx264',
+                audio=False,
+                ffmpeg_params=['-preset', 'ultrafast', '-crf', '18'],
+                verbose=False,
+                logger=None
+            )
+            print(f"Segment {segment_index} rendered: {segment_path}")
+            return segment_path, segment_index
+        except Exception as e:
+            print(f"Error rendering segment {segment_index}: {e}")
+            return None, segment_index
     
-    def _create_image_clip(self, entry):
-        """Create image clip with motion effects, accounting for segment timing"""
-        return create_fitted_image_clip_threaded(entry, self.upscaled_images_dir)
-    
-    def _create_image_clip_with_segment_timing(self, entry, segment_start_time):
-        """Create image clip with motion effects that account for segment timing"""
+    def _resize_clip_optimized(self, img_clip):
+        """FIXED resize - PROPERLY fill entire screen with no gaps"""
+        original_width = img_clip.w
+        original_height = img_clip.h
+        aspect_ratio = original_width / original_height
+        target_aspect = TARGET_WIDTH / TARGET_HEIGHT
+        
+        # Calculate dimensions to OVERFILL the screen (crop excess)
+        if aspect_ratio > target_aspect:
+            # Image is wider - scale by height and crop width
+            new_height = TARGET_HEIGHT
+            new_width = int(TARGET_HEIGHT * aspect_ratio)
+        else:
+            # Image is taller - scale by width and crop height
+            new_width = TARGET_WIDTH
+            new_height = int(TARGET_WIDTH / aspect_ratio)
+        
+        # ENSURE we at least fill the target size
+        new_width = max(TARGET_WIDTH, new_width)
+        new_height = max(TARGET_HEIGHT, new_height)
+        
+        # Resize the clip
+        resized_clip = img_clip.resize((new_width, new_height))
+        
+        # Position at (0,0) so top-left corner touches screen corner
+        # Then center it properly
+        x_offset = -(new_width - TARGET_WIDTH) // 2
+        y_offset = -(new_height - TARGET_HEIGHT) // 2
+        
+        # Set position to ensure image fills screen completely
+        resized_clip = resized_clip.set_position((x_offset, y_offset))
+        
+        return resized_clip
+
+    def _create_segment_image_clip(self, entry, segment_start, segment_duration):
+        """Create image clip for segment with global motion continuity"""
         tag = entry['tag']
-        img_start = float(entry['start'])
-        img_end = float(entry['end_adjusted'])
+        clip_start = entry['segment_start']
+        clip_end = entry['segment_end']
+        clip_duration = clip_end - clip_start
+        
+        if clip_duration <= 0:
+            return None
+        
         image_filename = f"{tag}.png"
         image_path = os.path.join(self.upscaled_images_dir, image_filename)
-
+        
         if not os.path.exists(image_path):
             print(f"Warning: Image '{image_path}' not found. Skipping.")
             return None
-
+        
         try:
-            img_duration = img_end - img_start
-            img_clip = ImageClip(image_path).set_duration(img_duration)
-
-            # Calculate where we are in the image's total timeline
-            image_time_offset = max(0, segment_start_time - img_start)
+            # Create base image clip
+            img_clip = ImageClip(image_path).set_duration(clip_duration)
             
-            print(f"Processing {image_filename}: duration={img_duration:.2f}s, offset={image_time_offset:.2f}s")
-
-            # Ensure we have valid dimensions
-            if img_clip.w <= 0 or img_clip.h <= 0:
-                print(f"Error: Invalid image dimensions for {image_filename}: {img_clip.w}x{img_clip.h}")
-                return None
-
-            # Resize preserving aspect ratio
-            aspect_ratio = img_clip.w / img_clip.h
-            target_aspect = TARGET_WIDTH / TARGET_HEIGHT
-
-            if aspect_ratio < target_aspect:
-                new_height = TARGET_HEIGHT
-                new_width = int(TARGET_HEIGHT * aspect_ratio)
+            # Resize to COMPLETELY FILL screen
+            img_clip = self._resize_clip_optimized(img_clip)
+            
+            # Apply ONLY center zoom motion
+            if ENABLE_IMAGE_MOTION:
+                def continuous_resize_func(t):
+                    absolute_time = segment_start + clip_start + t
+                    transform = self.global_motion_state.get_motion_transform(tag, absolute_time)
+                    return transform.get('zoom', 1.0)
+                
+                def continuous_position_func(t):
+                    # ALWAYS return center - no movement
+                    return ('center', 'center')
+                
+                img_clip = img_clip.resize(continuous_resize_func)
+                img_clip = img_clip.set_position(continuous_position_func)
             else:
-                new_width = TARGET_WIDTH
-                new_height = int(TARGET_WIDTH / aspect_ratio)
-
-            new_width = max(1, new_width)
-            new_height = max(1, new_height)
-            img_clip = img_clip.resize((new_width, new_height))
-
-            # Apply motion effects with time offset
-            if ENABLE_IMAGE_MOTION and img_duration > 0.5:
-                img_clip = apply_motion_effect_with_offset_and_tag(img_clip, img_duration, image_time_offset, tag)
-
-            # Black background
-            bg = ColorClip(size=(TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0), duration=img_duration)
-            final = CompositeVideoClip([bg, img_clip.set_position("center")])
-            return final
+                # Keep image centered
+                img_clip = img_clip.set_position('center')
+            
+            # FIXED rotation - make it visible
+            if ENABLE_ROTATION_DRIFT:
+                def continuous_rotation_func(t):
+                    absolute_time = segment_start + clip_start + t
+                    transform = self.global_motion_state.get_motion_transform(tag, absolute_time)
+                    return transform.get('rotation', 0)  # REMOVED the 0.1 multiplier
+                
+                img_clip = img_clip.rotate(continuous_rotation_func)
+            
+            # Set timing within segment
+            final_clip = img_clip.set_start(clip_start).set_end(clip_end)
+            
+            return final_clip
             
         except Exception as e:
             print(f"Error processing {image_path}: {e}")
+            return None
+
+    def _create_segment_subtitle_clip(self, sub, segment_start):
+        """Create subtitle clip for segment with global continuity"""
+        try:
+            clip_start = sub['segment_start']
+            clip_end = sub['segment_end']
+            duration = clip_end - clip_start
+            
+            if duration <= 0:
+                return None
+            
+            # SIMPLIFIED - NO RAINBOW TEXT (was causing errors)
+            # Create base text clip
+            txt_clip = TextClip(
+                sub['text'],
+                fontsize=SUBTITLE_FONTSIZE,
+                color=SUBTITLE_COLOR,
+                font=SUBTITLE_FONT,
+                stroke_color=SUBTITLE_STROKE_COLOR,
+                stroke_width=SUBTITLE_STROKE_WIDTH
+            ).set_duration(duration).set_position(('center', SUBTITLE_POSITION_Y))
+            
+            # Apply scale effect using absolute timeline - MAKE IT MORE DRAMATIC
+            if SCALE_EFFECT:  # REMOVED duration check to make it always work
+                def optimized_scale_function(t):
+                    # Scale effect happens at the beginning of EVERY subtitle
+                    if t < SCALE_DURATION:
+                        progress = t / SCALE_DURATION
+                        if progress < 0.6:
+                            scale = 1.0 + (SCALE_FACTOR - 1.0) * (progress / 0.6)
+                        else:
+                            overshoot = 1.3  # MORE overshoot
+                            bounce_progress = (progress - 0.6) / 0.4
+                            scale = SCALE_FACTOR * overshoot - (SCALE_FACTOR * (overshoot - 1.0)) * bounce_progress
+                        return scale
+                    return 1.0
+                
+                txt_clip = txt_clip.resize(optimized_scale_function)
+            
+            # Apply shake using absolute timeline
+            if ENABLE_SHAKE_EFFECT:
+                def optimized_subtitle_shake(t):
+                    absolute_time = segment_start + clip_start + t
+                    shake_seed = int(absolute_time * SHAKE_FREQUENCY * 1000) % 1000
+                    np.random.seed(shake_seed)
+                    
+                    base_y = SUBTITLE_POSITION_Y
+                    y_shake = np.random.uniform(-SHAKE_INTENSITY/2, SHAKE_INTENSITY/2)
+                    return ('center', base_y + y_shake)
+                
+                txt_clip = txt_clip.set_position(optimized_subtitle_shake)
+            
+            # Set timing within segment
+            txt_clip = txt_clip.set_start(clip_start).set_end(clip_end)
+            return txt_clip
+            
+        except Exception as e:
+            print(f"Error creating subtitle '{sub['text']}': {e}")
+            import traceback
             traceback.print_exc()
             return None
-    
-    def _create_subtitle_clip(self, sub):
-        """Create subtitle clip with brain rot effects"""
-        return create_subtitle_clip_threaded(sub)
 
-def calculate_video_segments(img_timestamps, segment_duration=SEGMENT_DURATION):
-    """Calculate video segments based on total duration"""
-    if not img_timestamps:
-        return []
+    def _create_segment_watermark(self, duration):
+        """Create watermark for segment"""
+        try:
+            txt_clip = TextClip(
+                WATERMARK_TEXT,
+                fontsize=WATERMARK_FONTSIZE,
+                color=WATERMARK_COLOR,
+                font=WATERMARK_FONT
+            ).set_duration(duration)
+            
+            # Get dimensions efficiently
+            test_frame = txt_clip.get_frame(0)
+            txt_height, txt_width = test_frame.shape[:2]
+            
+            # Create background
+            bg_width = txt_width + (WATERMARK_PADDING * 2) + WATERMARK_MARGIN
+            bg_height = txt_height + (WATERMARK_PADDING * 2) + WATERMARK_MARGIN
+            
+            if isinstance(WATERMARK_BG_COLOR, str):
+                if WATERMARK_BG_COLOR.startswith('#'):
+                    hex_color = WATERMARK_BG_COLOR[1:]
+                    bg_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+                else:
+                    bg_color = (0, 0, 0)
+            else:
+                bg_color = WATERMARK_BG_COLOR
+            
+            bg_clip = ColorClip(size=(bg_width, bg_height), color=bg_color, duration=duration)
+            txt_positioned = txt_clip.set_position((WATERMARK_PADDING, WATERMARK_PADDING))
+            
+            watermark_composite = CompositeVideoClip([bg_clip, txt_positioned], size=(bg_width, bg_height))
+            
+            watermark_x = TARGET_WIDTH - bg_width
+            watermark_y = TARGET_HEIGHT - bg_height
+            
+            return watermark_composite.set_position((watermark_x, watermark_y))
+            
+        except Exception as e:
+            print(f"Error creating watermark: {e}")
+            return None
+
+def create_threaded_video(project_name, base_dir, upscaled_images_dir, img_timestamps, subtitles):
+    """Create video using threaded segment processing with continuous motion"""
     
-    # Find total video duration
-    max_end_time = max(float(entry['end_adjusted']) for entry in img_timestamps)
+    # Calculate total duration
+    total_duration = max(float(entry['end_adjusted']) for entry in img_timestamps)
+    
+    # Initialize global motion state
+    global_motion_state = GlobalMotionState(img_timestamps, total_duration)
     
     # Calculate segments
     segments = []
-    current_time = 0
-    segment_id = 0
+    num_segments = math.ceil(total_duration / SEGMENT_DURATION)
     
-    while current_time < max_end_time:
-        end_time = min(current_time + segment_duration, max_end_time)
-        segments.append({
-            'id': segment_id,
-            'start': current_time,
-            'end': end_time
-        })
-        current_time = end_time
-        segment_id += 1
+    for i in range(num_segments):
+        segment_start = i * SEGMENT_DURATION
+        segment_end = min((i + 1) * SEGMENT_DURATION, total_duration)
+        segments.append((segment_start, segment_end, i))
     
-    return segments
+    print(f"Processing {len(segments)} segments with {psutil.cpu_count()} threads...")
+    
+    # Process segments in parallel
+    segment_files = []
+    processor = SegmentProcessor(global_motion_state, project_name, base_dir, upscaled_images_dir, subtitles)
+    
+    with ThreadPoolExecutor(max_workers=min(len(segments), psutil.cpu_count())) as executor:
+        futures = []
+        for segment_start, segment_end, segment_index in segments:
+            future = executor.submit(
+                processor.process_segment, 
+                segment_start, segment_end, segment_index, img_timestamps
+            )
+            futures.append(future)
+        
+        # Collect results
+        for future in as_completed(futures):
+            segment_path, segment_index = future.result()
+            if segment_path:
+                segment_files.append((segment_index, segment_path))
+    
+    # Sort segments by index
+    segment_files.sort(key=lambda x: x[0])
+    
+    if not segment_files:
+        print("No segments were created successfully!")
+        return None
+    
+    # Stitch segments with FFmpeg
+    print("Stitching segments with FFmpeg...")
+    temp_dir = os.path.dirname(segment_files[0][1])
+    filelist_path = os.path.join(temp_dir, "segments.txt")
+    
+    with open(filelist_path, 'w') as f:
+        for _, segment_path in segment_files:
+            f.write(f"file '{segment_path}'\n")
+    
+    output_path = os.path.join(base_dir, f"{project_name}_stitched.mp4")
+    
+    # FFmpeg concat with exact timing preservation
+    cmd = [
+        'ffmpeg', '-y',
+        '-f', 'concat',
+        '-safe', '0',
+        '-i', filelist_path,
+        '-c', 'copy',  # Copy streams without re-encoding
+        '-avoid_negative_ts', 'make_zero',
+        output_path
+    ]
+    
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    # Cleanup temp files
+    for _, segment_path in segment_files:
+        if os.path.exists(segment_path):
+            os.unlink(segment_path)
+    shutil.rmtree(temp_dir)
+    
+    if result.returncode != 0:
+        print(f"FFmpeg stitching failed: {result.stderr}")
+        return None
+    
+    print(f"Video stitched successfully: {output_path}")
+    return output_path
 
-def concat_video_segments(segment_paths, output_path):
-    """Use FFmpeg to concatenate video segments"""
-    if not segment_paths:
-        raise ValueError("No segments to concatenate")
+def main():
+    parser = argparse.ArgumentParser(description='Create threaded video with continuous motion')
+    parser.add_argument('project_name', help='Name of the project')
+    parser.add_argument('--render', action='store_true', help='Render the final video instead of preview')
     
-    # Create temporary file list for FFmpeg
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
-        for segment_path in segment_paths:
-            f.write(f"file '{os.path.abspath(segment_path)}'\n")
-        filelist_path = f.name
+    args = parser.parse_args()
+    project_name = args.project_name
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    base_dir = os.path.abspath(os.path.join(script_dir, "..", "0-project-files", project_name))
+
+    if not os.path.exists(base_dir):
+        print(f"Project directory '{base_dir}' does not exist.")
+        sys.exit(1)
+
+    upscaled_images_dir = os.path.join(base_dir, "upscaled_images")
+    if not os.path.exists(upscaled_images_dir):
+        print(f"Upscaled images directory '{upscaled_images_dir}' does not exist.")
+        sys.exit(1)
+
+    img_timestamps_file_path = os.path.join(base_dir, f'{project_name}_img_prompts.json')
+    if not os.path.exists(img_timestamps_file_path):
+        print(f"Image timestamps file '{img_timestamps_file_path}' does not exist.")
+        sys.exit(1)
+
+    # Load data
+    with open(img_timestamps_file_path, 'r') as f:
+        img_timestamps = json.load(f)
+
+    # Load subtitles
+    srt_path = os.path.join(base_dir, f"{project_name}_wordlevel.srt")
+    subtitles = []
+    if os.path.exists(srt_path):
+        print(f"Loading subtitles from {srt_path}")
+        subtitles = parse_srt(srt_path)
+
+    if args.render:
+        print("Creating threaded video with continuous motion...")
+        
+        # Create the video using threading
+        stitched_video_path = create_threaded_video(
+            project_name, base_dir, upscaled_images_dir, img_timestamps, subtitles
+        )
+        
+        if not stitched_video_path:
+            print("Failed to create video!")
+            sys.exit(1)
+        
+        # Add audio with FFmpeg
+        audio_path = os.path.join(base_dir, f"{project_name}.wav")
+        background_music_path = os.path.join(script_dir, "..", "common_assets", BACKGROUND_MUSIC_FILE)
+        final_output_path = os.path.join(base_dir, f"{project_name}_final.mp4")
+        
+        if add_audio_with_ffmpeg(stitched_video_path, audio_path, background_music_path, final_output_path):
+            print(f"Final video with audio: {final_output_path}")
+            # Clean up intermediate file
+            if os.path.exists(stitched_video_path):
+                os.unlink(stitched_video_path)
+        
+    else:
+        # Preview mode (first 30 seconds)
+        print("Creating preview...")
+        preview_duration = min(30, max(float(entry['end_adjusted']) for entry in img_timestamps))
+        
+        # Filter for preview
+        preview_timestamps = []
+        for entry in img_timestamps:
+            if float(entry['start']) < preview_duration:
+                preview_entry = entry.copy()
+                preview_entry['end_adjusted'] = str(min(float(entry['end_adjusted']), preview_duration))
+                preview_timestamps.append(preview_entry)
+        
+        preview_subtitles = [sub for sub in subtitles if sub['start'] < preview_duration]
+        
+        preview_path = create_threaded_video(
+            f"{project_name}_preview", base_dir, upscaled_images_dir, 
+            preview_timestamps, preview_subtitles
+        )
+        
+        if preview_path:
+            subprocess.run(['ffplay', '-autoexit', preview_path])
+
+def parse_srt(srt_path):
+    """Parse SRT file and return list of subtitle entries"""
+    subtitles = []
     
-    try:
-        # FFmpeg concat command
-        cmd = [
-            'ffmpeg', '-y',  # -y to overwrite output file
-            '-f', 'concat',
-            '-safe', '0',
-            '-i', filelist_path,
-            '-c', 'copy',  # Copy streams without re-encoding
-            output_path
-        ]
-        
-        print(f"Concatenating {len(segment_paths)} segments...")
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        
-        if result.returncode != 0:
-            print(f"FFmpeg concat error: {result.stderr}")
-            return False
-        
-        print(f"Successfully concatenated video: {output_path}")
-        return True
-        
-    finally:
-        # Clean up temporary file list
-        if os.path.exists(filelist_path):
-            os.unlink(filelist_path)
+    with open(srt_path, 'r', encoding='utf-8') as f:
+        content = f.read().strip()
+    
+    blocks = content.split('\n\n')
+    
+    for block in blocks:
+        lines = block.strip().split('\n')
+        if len(lines) >= 3:
+            # Parse timestamp line (format: 00:00:00,000 --> 00:00:00,000)
+            timestamp_line = lines[1]
+            start_str, end_str = timestamp_line.split(' --> ')
+            
+            # Convert timestamp to seconds
+            def time_to_seconds(time_str):
+                time_str = time_str.replace(',', '.')
+                parts = time_str.split(':')
+                return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
+            
+            start_time = time_to_seconds(start_str)
+            end_time = time_to_seconds(end_str)
+            
+            # Join text lines (in case subtitle spans multiple lines)
+            text = ' '.join(lines[2:])
+            
+            subtitles.append({
+                'start': start_time,
+                'end': end_time,
+                'text': text
+            })
+    
+    return subtitles
 
 def add_audio_with_ffmpeg(video_path, audio_path, background_music_path, output_path):
     """Use FFmpeg to add audio to the concatenated video"""
@@ -419,958 +738,6 @@ def add_audio_with_ffmpeg(video_path, audio_path, background_music_path, output_
     
     print(f"Successfully added audio: {output_path}")
     return True
-
-def main():
-    parser = argparse.ArgumentParser(description='Create video from images with timestamps')
-    parser.add_argument('project_name', help='Name of the project')
-    parser.add_argument('--render', action='store_true', help='Render the final video instead of preview')
-    parser.add_argument('--segment-duration', type=int, default=SEGMENT_DURATION, 
-                       help=f'Duration of each segment in seconds (default: {SEGMENT_DURATION})')
-    
-    args = parser.parse_args()
-    project_name = args.project_name
-    segment_duration = args.segment_duration
-
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    base_dir = os.path.abspath(os.path.join(script_dir, "..", "0-project-files", project_name))
-
-    if not os.path.exists(base_dir):
-        print(f"Project directory '{base_dir}' does not exist.")
-        sys.exit(1)
-
-    upscaled_images_dir = os.path.join(base_dir, "upscaled_images")
-    if not os.path.exists(upscaled_images_dir):
-        print(f"Upscaled images directory '{upscaled_images_dir}' does not exist.")
-        sys.exit(1)
-
-    img_timestamps_file_path = os.path.join(base_dir, f'{project_name}_img_prompts.json')
-    if not os.path.exists(img_timestamps_file_path):
-        print(f"Image timestamps file '{img_timestamps_file_path}' does not exist.")
-        sys.exit(1)
-
-    # Load image timestamps
-    with open(img_timestamps_file_path, 'r') as f:
-        img_timestamps = json.load(f)
-
-    # Load subtitles if available
-    srt_path = os.path.join(base_dir, f"{project_name}_wordlevel.srt")
-    subtitles = []
-    if os.path.exists(srt_path):
-        print(f"Loading subtitles from {srt_path}")
-        subtitles = parse_srt(srt_path)
-
-    # Calculate video segments
-    segments = calculate_video_segments(img_timestamps, segment_duration)
-    print(f"Video will be processed in {len(segments)} segments of {segment_duration}s each")
-
-    if args.render:
-        # Create temporary directory for segments
-        temp_dir = tempfile.mkdtemp(prefix=f"{project_name}_segments_")
-        print(f"Using temporary directory: {temp_dir}")
-        
-        try:
-            # Create segment processor
-            processor = VideoSegmentProcessor(project_name, base_dir, upscaled_images_dir, subtitles)
-            
-            # Process segments in parallel
-            optimal_threads = min(get_optimal_thread_count(), len(segments))
-            print(f"Processing {len(segments)} segments using {optimal_threads} threads...")
-            
-            segment_paths = []
-            
-            with ThreadPoolExecutor(max_workers=optimal_threads) as executor:
-                # Submit all segment processing tasks
-                future_to_segment = {
-                    executor.submit(
-                        processor.process_segment,
-                        seg['id'], seg['start'], seg['end'], 
-                        img_timestamps, temp_dir
-                    ): seg for seg in segments
-                }
-                
-                # Collect results as they complete
-                completed_segments = {}
-                for future in as_completed(future_to_segment):
-                    segment = future_to_segment[future]
-                    result = future.result()
-                    if result:
-                        completed_segments[segment['id']] = result
-            
-            # Sort segments by ID to maintain order
-            for i in range(len(segments)):
-                if i in completed_segments:
-                    segment_paths.append(completed_segments[i])
-            
-            if not segment_paths:
-                print("No segments were successfully created!")
-                sys.exit(1)
-            
-            print(f"Successfully created {len(segment_paths)} video segments")
-            
-            # Concatenate video segments
-            video_no_audio_path = os.path.join(base_dir, f"{project_name}_no_audio.mp4")
-            if not concat_video_segments(segment_paths, video_no_audio_path):
-                print("Failed to concatenate video segments!")
-                sys.exit(1)
-            
-            # Add audio to the final video
-            output_path = os.path.join(base_dir, f"{project_name}.mp4")
-            audio_path = os.path.join(base_dir, f"{project_name}.wav")
-            background_music_path = os.path.join(script_dir, "..", "common_assets", BACKGROUND_MUSIC_FILE)
-            
-            if not add_audio_with_ffmpeg(video_no_audio_path, audio_path, background_music_path, output_path):
-                print("Failed to add audio to video!")
-                sys.exit(1)
-            
-            # Clean up temporary video file
-            if os.path.exists(video_no_audio_path):
-                os.unlink(video_no_audio_path)
-            
-            print(f"Final video created: {output_path}")
-            
-        finally:
-            # Clean up temporary directory
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
-                print(f"Cleaned up temporary directory: {temp_dir}")
-    
-    else:
-        # Preview mode - create a short preview using existing logic
-        print("Preview mode - creating short preview...")
-        preview_segment = segments[0] if segments else {'start': 0, 'end': min(30, max(float(entry['end_adjusted']) for entry in img_timestamps))}
-        
-        processor = VideoSegmentProcessor(project_name, base_dir, upscaled_images_dir, subtitles)
-        
-        # Create a temporary preview
-        with tempfile.TemporaryDirectory() as temp_dir:
-            preview_path = processor.process_segment(
-                0, preview_segment['start'], preview_segment['end'], 
-                img_timestamps, temp_dir
-            )
-            
-            if preview_path:
-                # Use ffplay to preview the video
-                subprocess.run(['ffplay', '-autoexit', preview_path])
-
-def parse_srt(srt_path):
-    """Parse SRT file and return list of subtitle entries"""
-    subtitles = []
-    
-    with open(srt_path, 'r', encoding='utf-8') as f:
-        content = f.read().strip()
-    
-    blocks = content.split('\n\n')
-    
-    for block in blocks:
-        lines = block.strip().split('\n')
-        if len(lines) >= 3:
-            # Parse timestamp line (format: 00:00:00,000 --> 00:00:00,000)
-            timestamp_line = lines[1]
-            start_str, end_str = timestamp_line.split(' --> ')
-            
-            # Convert timestamp to seconds
-            def time_to_seconds(time_str):
-                time_str = time_str.replace(',', '.')
-                parts = time_str.split(':')
-                return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
-            
-            start_time = time_to_seconds(start_str)
-            end_time = time_to_seconds(end_str)
-            
-            # Join text lines (in case subtitle spans multiple lines)
-            text = ' '.join(lines[2:])
-            
-            subtitles.append({
-                'start': start_time,
-                'end': end_time,
-                'text': text
-            })
-    
-    return subtitles
-
-def get_optimal_thread_count():
-    """Calculate optimal thread count based on system resources"""
-    cpu_count = os.cpu_count()
-    
-    # Get current CPU usage
-    cpu_usage = psutil.cpu_percent(interval=1)
-    
-    # Get memory usage
-    memory = psutil.virtual_memory()
-    memory_usage = memory.percent
-    
-    # Conservative approach: use 75% of available cores, but adjust based on load
-    if cpu_usage > 80 or memory_usage > 85:
-        # System is busy, use fewer threads
-        optimal_threads = max(2, cpu_count // 4)
-    elif cpu_usage > 50 or memory_usage > 70:
-        # Moderate load, use half the cores
-        optimal_threads = max(4, cpu_count // 2)
-    else:
-        # Low load, use most cores but leave some headroom
-        optimal_threads = max(4, int(cpu_count * 0.75))
-    
-    print(f"System info: {cpu_count} cores, {cpu_usage:.1f}% CPU, {memory_usage:.1f}% memory")
-    print(f"Selected {optimal_threads} threads for processing")
-    
-    return optimal_threads
-
-def create_fitted_image_clip_threaded(entry, upscaled_images_dir):
-    """Thread-safe version of image clip creation with motion effects"""
-    tag = entry['tag']
-    start = float(entry['start'])
-    end = float(entry['end_adjusted'])
-    image_filename = f"{tag}.png"
-    image_path = os.path.join(upscaled_images_dir, image_filename)
-
-    if not os.path.exists(image_path):
-        print(f"Warning: Image '{image_path}' not found. Skipping.")
-        return None
-
-    try:
-        duration = end - start
-        img_clip = ImageClip(image_path).set_duration(duration)
-
-        # Debug: Print original dimensions
-        print(f"Processing {image_filename}: {img_clip.w}x{img_clip.h}, duration: {duration:.2f}s")
-
-        # Ensure we have valid dimensions
-        if img_clip.w <= 0 or img_clip.h <= 0:
-            print(f"Error: Invalid image dimensions for {image_filename}: {img_clip.w}x{img_clip.h}")
-            return None
-
-        # Resize preserving aspect ratio to fit inside 1920x1080
-        aspect_ratio = img_clip.w / img_clip.h
-        target_aspect = TARGET_WIDTH / TARGET_HEIGHT
-
-        if aspect_ratio < target_aspect:
-            # Image is taller, fit to height
-            new_height = TARGET_HEIGHT
-            new_width = int(TARGET_HEIGHT * aspect_ratio)
-        else:
-            # Image is wider, fit to width
-            new_width = TARGET_WIDTH
-            new_height = int(TARGET_WIDTH / aspect_ratio)
-
-        # Ensure minimum dimensions
-        new_width = max(1, new_width)
-        new_height = max(1, new_height)
-
-        print(f"Resizing {image_filename} to {new_width}x{new_height}")
-        img_clip = img_clip.resize((new_width, new_height))
-
-        # Apply motion effects if enabled (only for longer clips to avoid issues)
-        if ENABLE_IMAGE_MOTION and duration > 0.5:
-            img_clip = apply_motion_effect(img_clip, duration)
-
-        # Black background clip
-        bg = ColorClip(size=(TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0), duration=duration)
-
-        # Composite with centered image on black background
-        # Don't set start/end here - that will be handled in the segment processor
-        final = CompositeVideoClip([bg, img_clip.set_position("center")])
-        return final
-    except Exception as e:
-        print(f"Error processing {image_path}: {e}")
-        traceback.print_exc()
-        return None
-
-def apply_motion_effect(img_clip, duration):
-    """Apply various motion effects to image clips"""
-    import random
-    
-    # Apply primary motion effect FIRST
-    if MOTION_TYPE == 'ken_burns':
-        img_clip = apply_ken_burns_effect(img_clip, duration)
-    elif MOTION_TYPE == 'parallax':
-        img_clip = apply_parallax_effect(img_clip, duration)
-    elif MOTION_TYPE == 'zoom_pan':
-        img_clip = apply_zoom_pan_effect(img_clip, duration)
-    elif MOTION_TYPE == 'drift':
-        img_clip = apply_drift_effect(img_clip, duration)
-    
-    # Apply brain rot effects (avoiding conflicting resize operations)
-    if ENABLE_BREATHING_EFFECT and not ENABLE_ZOOM_PULSE:
-        img_clip = apply_breathing_effect(img_clip, duration)
-    
-    if ENABLE_ROTATION_DRIFT:
-        img_clip = apply_rotation_drift(img_clip, duration)
-        
-    if ENABLE_SHAKE_EFFECT:
-        img_clip = apply_shake_effect(img_clip, duration)
-        
-    # Only apply ONE zoom-based effect to avoid conflicts
-    if ENABLE_ZOOM_PULSE and not ENABLE_BREATHING_EFFECT:
-        img_clip = apply_zoom_pulse_effect(img_clip, duration)
-        
-    if ENABLE_GLITCH_EFFECT:
-        img_clip = apply_glitch_effect(img_clip, duration)
-    
-    return img_clip
-
-def apply_motion_effect_with_offset(img_clip, total_duration, time_offset):
-    """Apply motion effects accounting for where we are in the image's timeline"""
-    import random
-    
-    # Apply primary motion effect with time offset
-    if MOTION_TYPE == 'ken_burns':
-        img_clip = apply_ken_burns_effect_with_offset(img_clip, total_duration, time_offset)
-    elif MOTION_TYPE == 'parallax':
-        img_clip = apply_parallax_effect_with_offset(img_clip, total_duration, time_offset)
-    elif MOTION_TYPE == 'zoom_pan':
-        img_clip = apply_zoom_pan_effect_with_offset(img_clip, total_duration, time_offset)
-    elif MOTION_TYPE == 'drift':
-        img_clip = apply_drift_effect_with_offset(img_clip, total_duration, time_offset)
-    
-    # Apply brain rot effects with offset
-    if ENABLE_BREATHING_EFFECT and not ENABLE_ZOOM_PULSE:
-        img_clip = apply_breathing_effect_with_offset(img_clip, total_duration, time_offset)
-    
-    if ENABLE_ROTATION_DRIFT:
-        img_clip = apply_rotation_drift_with_offset(img_clip, total_duration, time_offset)
-        
-    if ENABLE_SHAKE_EFFECT:
-        img_clip = apply_shake_effect_with_offset(img_clip, total_duration, time_offset)
-        
-    if ENABLE_ZOOM_PULSE and not ENABLE_BREATHING_EFFECT:
-        img_clip = apply_zoom_pulse_effect_with_offset(img_clip, total_duration, time_offset)
-        
-    if ENABLE_GLITCH_EFFECT:
-        img_clip = apply_glitch_effect_with_offset(img_clip, total_duration, time_offset)
-    
-    return img_clip
-
-def apply_motion_effect_with_offset_and_tag(img_clip, total_duration, time_offset, tag):
-    """Apply motion effects with consistent seeding based on image tag"""
-    import random
-    
-    # Use tag for consistent seeding across all segments of the same image
-    seed_value = hash(tag) % 2147483647
-    
-    # Apply primary motion effect with time offset
-    if MOTION_TYPE == 'ken_burns':
-        img_clip = apply_ken_burns_effect_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value)
-    elif MOTION_TYPE == 'parallax':
-        img_clip = apply_parallax_effect_with_offset(img_clip, total_duration, time_offset)
-    elif MOTION_TYPE == 'zoom_pan':
-        img_clip = apply_zoom_pan_effect_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value)
-    elif MOTION_TYPE == 'drift':
-        img_clip = apply_drift_effect_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value)
-    
-    # Apply brain rot effects with offset
-    if ENABLE_BREATHING_EFFECT and not ENABLE_ZOOM_PULSE:
-        img_clip = apply_breathing_effect_with_offset(img_clip, total_duration, time_offset)
-    
-    if ENABLE_ROTATION_DRIFT:
-        img_clip = apply_rotation_drift_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value)
-        
-    if ENABLE_SHAKE_EFFECT:
-        img_clip = apply_shake_effect_with_offset(img_clip, total_duration, time_offset)
-        
-    if ENABLE_ZOOM_PULSE and not ENABLE_BREATHING_EFFECT:
-        img_clip = apply_zoom_pulse_effect_with_offset(img_clip, total_duration, time_offset)
-        
-    if ENABLE_GLITCH_EFFECT:
-        img_clip = apply_glitch_effect_with_offset(img_clip, total_duration, time_offset)
-    
-    return img_clip
-
-def apply_zoom_pulse_effect(img_clip, duration):
-    """Rapid zoom pulse effect"""
-    import math
-    
-    def zoom_pulse_func(t):
-        pulse = math.sin(t * ZOOM_PULSE_SPEED * 2 * math.pi)
-        zoom_variation = pulse * ZOOM_PULSE_INTENSITY
-        return 1.0 + zoom_variation
-    
-    # Don't chain with existing resize - apply directly
-    return img_clip.resize(zoom_pulse_func)
-
-def apply_zoom_pulse_effect_with_offset(img_clip, total_duration, time_offset):
-    """Zoom pulse effect that continues smoothly across segments"""
-    import math
-    
-    def zoom_pulse_func(t):
-        adjusted_t = t + time_offset
-        pulse = math.sin(adjusted_t * ZOOM_PULSE_SPEED * 2 * math.pi)
-        zoom_variation = pulse * ZOOM_PULSE_INTENSITY
-        return 1.0 + zoom_variation
-    
-    return img_clip.resize(zoom_pulse_func)
-
-def apply_breathing_effect(img_clip, duration):
-    """Subtle breathing/pulsing scale effect"""
-    import math
-    
-    def breathing_scale(t):
-        # Create a sine wave for breathing effect
-        cycle = math.sin(t * 2 * math.pi * BREATHING_SPEED)
-        scale_variation = cycle * BREATHING_INTENSITY
-        return 1.0 + scale_variation
-    
-    return img_clip.resize(breathing_scale)
-
-def apply_breathing_effect_with_offset(img_clip, total_duration, time_offset):
-    """Breathing effect that continues smoothly across segments"""
-    import math
-    
-    def breathing_scale(t):
-        adjusted_t = t + time_offset
-        cycle = math.sin(adjusted_t * 2 * math.pi * BREATHING_SPEED)
-        scale_variation = cycle * BREATHING_INTENSITY
-        return 1.0 + scale_variation
-    
-    return img_clip.resize(breathing_scale)
-
-def apply_rotation_drift(img_clip, duration):
-    """Very subtle rotation drift"""
-    import random
-    import math
-    
-    max_rotation = ROTATION_RANGE
-    rotation_direction = random.choice([-1, 1])
-    
-    def rotation_func(t):
-        progress = t / duration
-        # Smooth easing
-        eased_progress = 0.5 * (1 - math.cos(progress * math.pi))
-        return rotation_direction * max_rotation * eased_progress
-    
-    return img_clip.rotate(rotation_func)
-
-def apply_ken_burns_effect(img_clip, duration):
-    """Classic Ken Burns effect - slow zoom and pan"""
-    import random
-    
-    # Random start and end zoom levels
-    start_zoom = random.uniform(ZOOM_RANGE[0], ZOOM_RANGE[0] + 0.1)
-    end_zoom = random.uniform(ZOOM_RANGE[1] - 0.1, ZOOM_RANGE[1])
-    
-    # Random pan direction
-    start_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    end_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    start_y = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    end_y = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    
-    def ken_burns_transform(t):
-        progress = t / duration
-        
-        # Interpolate zoom
-        zoom = start_zoom + (end_zoom - start_zoom) * progress
-        
-        # Interpolate position
-        x_offset = (start_x + (end_x - start_x) * progress) * TARGET_WIDTH
-        y_offset = (start_y + (end_y - start_y) * progress) * TARGET_HEIGHT
-        
-        return zoom, x_offset, y_offset
-    
-    def resize_func(t):
-        zoom, _, _ = ken_burns_transform(t)
-        return zoom
-    
-    def position_func(t):
-        _, x_offset, y_offset = ken_burns_transform(t)
-        return ('center', 'center')  # Keep centered for now, adjust if needed
-    
-    return img_clip.resize(resize_func)
-
-def apply_parallax_effect(img_clip, duration):
-    """Subtle horizontal parallax movement"""
-    import math
-    
-    # Calculate movement range
-    max_offset = MOTION_INTENSITY * TARGET_WIDTH
-    
-    def parallax_position(t):
-        # Smooth sinusoidal movement
-        progress = t / duration
-        x_offset = math.sin(progress * math.pi * 2) * max_offset
-        return (TARGET_WIDTH // 2 + x_offset, 'center')
-    
-    return img_clip.set_position(parallax_position)
-
-def apply_zoom_pan_effect(img_clip, duration):
-    """Slow zoom with subtle pan"""
-    import random
-    
-    # Random zoom direction (in or out)
-    zoom_in = random.choice([True, False])
-    start_zoom = ZOOM_RANGE[1] if zoom_in else ZOOM_RANGE[0]
-    end_zoom = ZOOM_RANGE[0] if zoom_in else ZOOM_RANGE[1]
-    
-    # Random pan direction
-    pan_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY) * TARGET_WIDTH
-    
-    def zoom_pan_transform(t):
-        progress = t / duration
-        
-        # Smooth zoom
-        zoom = start_zoom + (end_zoom - start_zoom) * progress
-        
-        # Linear pan
-        x_offset = pan_x * progress
-        
-        return zoom, x_offset
-    
-    def resize_func(t):
-        zoom, _ = zoom_pan_transform(t)
-        return zoom
-    
-    def position_func(t):
-        _, x_offset = zoom_pan_transform(t)
-        return (TARGET_WIDTH // 2 + x_offset, 'center')
-    
-    return img_clip.resize(resize_func).set_position(position_func)
-
-def apply_drift_effect(img_clip, duration):
-    """Gentle drifting movement in random direction"""
-    import random
-    import math
-    
-    # Random drift direction and speed
-    drift_angle = random.uniform(0, 2 * math.pi)
-    drift_distance = MOTION_INTENSITY * min(TARGET_WIDTH, TARGET_HEIGHT)
-    
-    def drift_position(t):
-        progress = t / duration
-        
-        # Smooth easing function
-        eased_progress = 0.5 * (1 - math.cos(progress * math.pi))
-        
-        x_offset = math.cos(drift_angle) * drift_distance * eased_progress
-        y_offset = math.sin(drift_angle) * drift_distance * eased_progress
-        
-        return (TARGET_WIDTH // 2 + x_offset, TARGET_HEIGHT // 2 + y_offset)
-    
-    return img_clip.set_position(drift_position)
-
-def apply_shake_effect(img_clip, duration):
-    """Chaotic camera shake effect"""
-    import random
-    import math
-    
-    def shake_position(t):
-        # High frequency random shake
-        x_shake = random.uniform(-SHAKE_INTENSITY, SHAKE_INTENSITY) * math.sin(t * SHAKE_FREQUENCY * 2 * math.pi)
-        y_shake = random.uniform(-SHAKE_INTENSITY, SHAKE_INTENSITY) * math.cos(t * SHAKE_FREQUENCY * 1.7 * math.pi)
-        
-        return (TARGET_WIDTH // 2 + x_shake, TARGET_HEIGHT // 2 + y_shake)
-    
-    return img_clip.set_position(shake_position)
-
-def apply_glitch_effect(img_clip, duration):
-    """Random glitch jumps"""
-    import random
-    
-    def glitch_position(t):
-        # Random chance for glitch
-        if random.random() < GLITCH_PROBABILITY:
-            x_glitch = random.uniform(-GLITCH_INTENSITY, GLITCH_INTENSITY)
-            y_glitch = random.uniform(-GLITCH_INTENSITY, GLITCH_INTENSITY)
-            return (TARGET_WIDTH // 2 + x_glitch, TARGET_HEIGHT // 2 + y_glitch)
-        return ('center', 'center')
-    
-    return img_clip.set_position(glitch_position)
-
-def apply_ken_burns_effect_with_offset(img_clip, total_duration, time_offset):
-    """Ken Burns effect that continues smoothly across segments"""
-    import random
-    
-    # Use image dimensions as a consistent seed source
-    seed_value = hash((img_clip.w, img_clip.h, total_duration)) % 2147483647
-    random.seed(seed_value)
-    
-    start_zoom = random.uniform(ZOOM_RANGE[0], ZOOM_RANGE[0] + 0.1)
-    end_zoom = random.uniform(ZOOM_RANGE[1] - 0.1, ZOOM_RANGE[1])
-    start_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    end_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    start_y = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    end_y = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    
-    def ken_burns_transform(t):
-        # Adjust t to account for where we are in the total image timeline
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        
-        # Clamp progress to [0, 1]
-        progress = max(0, min(1, progress))
-        
-        # Interpolate zoom and position
-        zoom = start_zoom + (end_zoom - start_zoom) * progress
-        x_offset = (start_x + (end_x - start_x) * progress) * TARGET_WIDTH
-        y_offset = (start_y + (end_y - start_y) * progress) * TARGET_HEIGHT
-        
-        return zoom, x_offset, y_offset
-    
-    def resize_func(t):
-        zoom, _, _ = ken_burns_transform(t)
-        return zoom
-    
-    return img_clip.resize(resize_func)
-
-def apply_ken_burns_effect_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value):
-    """Ken Burns effect with tag-based seeding"""
-    import random
-    
-    random.seed(seed_value)
-    
-    start_zoom = random.uniform(ZOOM_RANGE[0], ZOOM_RANGE[0] + 0.1)
-    end_zoom = random.uniform(ZOOM_RANGE[1] - 0.1, ZOOM_RANGE[1])
-    start_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    end_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    start_y = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    end_y = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY)
-    
-    def ken_burns_transform(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        zoom = start_zoom + (end_zoom - start_zoom) * progress
-        return zoom
-    
-    return img_clip.resize(ken_burns_transform)
-
-def apply_rotation_drift_with_offset(img_clip, total_duration, time_offset):
-    """Rotation drift that continues smoothly across segments"""
-    import random
-    import math
-    
-    # Use consistent seed
-    seed_value = hash((img_clip.w, img_clip.h, total_duration)) % 2147483647
-    random.seed(seed_value)
-    
-    max_rotation = ROTATION_RANGE
-    rotation_direction = random.choice([-1, 1])
-    
-    def rotation_func(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        # Smooth easing
-        eased_progress = 0.5 * (1 - math.cos(progress * math.pi))
-        return rotation_direction * max_rotation * eased_progress
-    
-    return img_clip.rotate(rotation_func)
-
-def apply_rotation_drift_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value):
-    """Rotation drift with tag-based seeding"""
-    import random
-    import math
-    
-    random.seed(seed_value)
-    
-    max_rotation = ROTATION_RANGE
-    rotation_direction = random.choice([-1, 1])
-    
-    def rotation_func(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        eased_progress = 0.5 * (1 - math.cos(progress * math.pi))
-        return rotation_direction * max_rotation * eased_progress
-    
-    return img_clip.rotate(rotation_func)
-
-def apply_zoom_pan_effect_with_offset(img_clip, total_duration, time_offset):
-    """Zoom pan effect that continues smoothly across segments"""
-    import random
-    
-    # Use consistent seed
-    seed_value = hash((img_clip.w, img_clip.h, total_duration)) % 2147483647
-    random.seed(seed_value)
-    
-    zoom_in = random.choice([True, False])
-    start_zoom = ZOOM_RANGE[1] if zoom_in else ZOOM_RANGE[0]
-    end_zoom = ZOOM_RANGE[0] if zoom_in else ZOOM_RANGE[1]
-    pan_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY) * TARGET_WIDTH
-    
-    def zoom_pan_transform(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        zoom = start_zoom + (end_zoom - start_zoom) * progress
-        x_offset = pan_x * progress
-        
-        return zoom, x_offset
-    
-    def resize_func(t):
-        zoom, _ = zoom_pan_transform(t)
-        return zoom
-    
-    def position_func(t):
-        _, x_offset = zoom_pan_transform(t)
-        return (TARGET_WIDTH // 2 + x_offset, 'center')
-    
-    return img_clip.resize(resize_func).set_position(position_func)
-
-def apply_zoom_pan_effect_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value):
-    """Zoom pan effect with tag-based seeding"""
-    import random
-    
-    random.seed(seed_value)
-    
-    zoom_in = random.choice([True, False])
-    start_zoom = ZOOM_RANGE[1] if zoom_in else ZOOM_RANGE[0]
-    end_zoom = ZOOM_RANGE[0] if zoom_in else ZOOM_RANGE[1]
-    pan_x = random.uniform(-MOTION_INTENSITY, MOTION_INTENSITY) * TARGET_WIDTH
-    
-    def zoom_pan_transform(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        zoom = start_zoom + (end_zoom - start_zoom) * progress
-        return zoom
-    
-    def position_func(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        x_offset = pan_x * progress
-        return (TARGET_WIDTH // 2 + x_offset, 'center')
-    
-    return img_clip.resize(zoom_pan_transform).set_position(position_func)
-
-def apply_drift_effect_with_offset(img_clip, total_duration, time_offset):
-    """Drift effect that continues smoothly across segments"""
-    import random
-    import math
-    
-    # Use consistent seed
-    seed_value = hash((img_clip.w, img_clip.h, total_duration)) % 2147483647
-    random.seed(seed_value)
-    
-    drift_angle = random.uniform(0, 2 * math.pi)
-    drift_distance = MOTION_INTENSITY * min(TARGET_WIDTH, TARGET_HEIGHT)
-    
-    def drift_position(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        eased_progress = 0.5 * (1 - math.cos(progress * math.pi))
-        
-        x_offset = math.cos(drift_angle) * drift_distance * eased_progress
-        y_offset = math.sin(drift_angle) * drift_distance * eased_progress
-        
-        return (TARGET_WIDTH // 2 + x_offset, TARGET_HEIGHT // 2 + y_offset)
-    
-    return img_clip.set_position(drift_position)
-
-def apply_drift_effect_with_offset_and_tag(img_clip, total_duration, time_offset, seed_value):
-    """Drift effect with tag-based seeding"""
-    import random
-    import math
-    
-    random.seed(seed_value)
-    
-    drift_angle = random.uniform(0, 2 * math.pi)
-    drift_distance = MOTION_INTENSITY * min(TARGET_WIDTH, TARGET_HEIGHT)
-    
-    def drift_position(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        eased_progress = 0.5 * (1 - math.cos(progress * math.pi))
-        
-        x_offset = math.cos(drift_angle) * drift_distance * eased_progress
-        y_offset = math.sin(drift_angle) * drift_distance * eased_progress
-        
-        return (TARGET_WIDTH // 2 + x_offset, TARGET_HEIGHT // 2 + y_offset)
-    
-    return img_clip.set_position(drift_position)
-
-def apply_parallax_effect_with_offset(img_clip, total_duration, time_offset):
-    """Parallax effect that continues smoothly across segments"""
-    import math
-    
-    max_offset = MOTION_INTENSITY * TARGET_WIDTH
-    
-    def parallax_position(t):
-        adjusted_t = t + time_offset
-        progress = adjusted_t / total_duration
-        progress = max(0, min(1, progress))
-        
-        x_offset = math.sin(progress * math.pi * 2) * max_offset
-        return (TARGET_WIDTH // 2 + x_offset, 'center')
-    
-    return img_clip.set_position(parallax_position)
-
-def apply_shake_effect_with_offset(img_clip, total_duration, time_offset):
-    """Shake effect that continues smoothly across segments"""
-    import random
-    import math
-    
-    def shake_position(t):
-        adjusted_t = t + time_offset
-        # Use a more stable seed for shake
-        shake_seed = int((adjusted_t * SHAKE_FREQUENCY) * 1000) % 2147483647
-        random.seed(shake_seed)
-        
-        x_shake = random.uniform(-SHAKE_INTENSITY, SHAKE_INTENSITY)
-        y_shake = random.uniform(-SHAKE_INTENSITY, SHAKE_INTENSITY)
-        
-        return (TARGET_WIDTH // 2 + x_shake, TARGET_HEIGHT // 2 + y_shake)
-    
-    return img_clip.set_position(shake_position)
-
-def apply_glitch_effect_with_offset(img_clip, total_duration, time_offset):
-    """Glitch effect that continues smoothly across segments"""
-    import random
-    
-    def glitch_position(t):
-        adjusted_t = t + time_offset
-        # Use adjusted time for consistent glitch timing
-        glitch_seed = int(adjusted_t * 1000) % 2147483647
-        random.seed(glitch_seed)
-        
-        if random.random() < GLITCH_PROBABILITY:
-            x_glitch = random.uniform(-GLITCH_INTENSITY, GLITCH_INTENSITY)
-            y_glitch = random.uniform(-GLITCH_INTENSITY, GLITCH_INTENSITY)
-            return (TARGET_WIDTH // 2 + x_glitch, TARGET_HEIGHT // 2 + y_glitch)
-        return ('center', 'center')
-    
-    return img_clip.set_position(glitch_position)
-
-def create_subtitle_clip_threaded(sub):
-    """Thread-safe version of subtitle creation with brain rot effects"""
-    try:
-        duration = sub['end'] - sub['start']
-        
-        # Rainbow text color if enabled
-        if ENABLE_RAINBOW_TEXT:
-            def get_rainbow_color(t):
-                import math
-                hue = (t * RAINBOW_SPEED) % 1.0
-                # Convert HSV to RGB (simplified)
-                r = int(255 * (1 + math.sin(hue * 6.28)) / 2)
-                g = int(255 * (1 + math.sin(hue * 6.28 + 2.09)) / 2)
-                b = int(255 * (1 + math.sin(hue * 6.28 + 4.18)) / 2)
-                return f"#{r:02x}{g:02x}{b:02x}"
-            
-            # Create text clip with rainbow effect (simplified - use base color for now)
-            txt_clip = TextClip(
-                sub['text'],
-                fontsize=SUBTITLE_FONTSIZE,
-                color=SUBTITLE_COLOR,
-                font=SUBTITLE_FONT,
-                stroke_color=SUBTITLE_STROKE_COLOR,
-                stroke_width=SUBTITLE_STROKE_WIDTH
-            ).set_duration(duration).set_position(('center', SUBTITLE_POSITION_Y))
-        else:
-            txt_clip = TextClip(
-                sub['text'],
-                fontsize=SUBTITLE_FONTSIZE,
-                color=SUBTITLE_COLOR,
-                font=SUBTITLE_FONT,
-                stroke_color=SUBTITLE_STROKE_COLOR,
-                stroke_width=SUBTITLE_STROKE_WIDTH
-            ).set_duration(duration).set_position(('center', SUBTITLE_POSITION_Y))
-        
-        # Remove fade effects - instant text transitions
-        
-        # Enhanced scale animation with overshoot
-        if SCALE_EFFECT and duration > SCALE_DURATION:
-            def brain_rot_scale_function(t):
-                import math
-                if t < SCALE_DURATION:
-                    progress = t / SCALE_DURATION
-                    # Bouncy overshoot effect
-                    if progress < 0.6:
-                        scale = 1.0 + (SCALE_FACTOR - 1.0) * (progress / 0.6)
-                    else:
-                        overshoot = 1.2  # Overshoot multiplier
-                        bounce_progress = (progress - 0.6) / 0.4
-                        scale = SCALE_FACTOR * overshoot - (SCALE_FACTOR * (overshoot - 1.0)) * bounce_progress
-                    return scale
-                return 1.0
-            
-            txt_clip = txt_clip.resize(brain_rot_scale_function)
-        
-        # Add shake to subtitles too
-        if ENABLE_SHAKE_EFFECT:
-            import random
-            import math
-            def subtitle_shake_position(t):
-                base_y = SUBTITLE_POSITION_Y
-                x_shake = random.uniform(-SHAKE_INTENSITY/2, SHAKE_INTENSITY/2)
-                y_shake = random.uniform(-SHAKE_INTENSITY/2, SHAKE_INTENSITY/2)
-                return ('center', base_y + y_shake)
-            
-            txt_clip = txt_clip.set_position(subtitle_shake_position)
-        
-        # Set timing
-        txt_clip = txt_clip.set_start(sub['start']).set_end(sub['end'])
-        return txt_clip
-    except Exception as e:
-        print(f"Error creating subtitle '{sub['text']}': {e}")
-        return None
-
-def create_watermark_clip(duration):
-    """Create a watermark text clip with solid background that extends to screen edges"""
-    try:
-        # Create the text clip with explicit RGB format
-        txt_clip = TextClip(
-            WATERMARK_TEXT,
-            fontsize=WATERMARK_FONTSIZE,
-            color=WATERMARK_COLOR,
-            font=WATERMARK_FONT
-        ).set_duration(duration)
-        
-        # Ensure text clip has proper RGB channels
-        if hasattr(txt_clip, 'mask'):
-            txt_clip = txt_clip.set_mask(None)  # Remove any mask issues
-        
-        # Get text dimensions - force evaluation to get actual size
-        test_frame = txt_clip.get_frame(0)
-        txt_height, txt_width = test_frame.shape[:2]
-        
-        # Create background that extends to screen edges
-        # Width: from text start to right edge of screen
-        # Height: from text start to bottom edge of screen
-        bg_width = txt_width + (WATERMARK_PADDING * 2) + WATERMARK_MARGIN
-        bg_height = txt_height + (WATERMARK_PADDING * 2) + WATERMARK_MARGIN
-        
-        # Ensure background is RGB (3 channels)
-        if isinstance(WATERMARK_BG_COLOR, str):
-            # Convert hex color to RGB tuple
-            if WATERMARK_BG_COLOR.startswith('#'):
-                hex_color = WATERMARK_BG_COLOR[1:]
-                bg_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-            else:
-                bg_color = (0, 0, 0)  # Default to black
-        else:
-            bg_color = WATERMARK_BG_COLOR
-        
-        bg_clip = ColorClip(
-            size=(bg_width, bg_height),
-            color=bg_color,
-            duration=duration
-        )
-        
-        # Position text with padding from the edges of the background
-        txt_positioned = txt_clip.set_position((WATERMARK_PADDING, WATERMARK_PADDING))
-        
-        # Composite text on background
-        watermark_composite = CompositeVideoClip([bg_clip, txt_positioned], size=(bg_width, bg_height))
-        
-        # Position watermark so it touches the right and bottom edges
-        watermark_x = TARGET_WIDTH - bg_width
-        watermark_y = TARGET_HEIGHT - bg_height
-        
-        return watermark_composite.set_position((watermark_x, watermark_y))
-        
-    except Exception as e:
-        print(f"Error creating watermark: {e}")
-        traceback.print_exc()
-        return None
 
 if __name__ == "__main__":
     start_time = time.time()

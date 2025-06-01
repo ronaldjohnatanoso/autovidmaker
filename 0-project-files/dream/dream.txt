@@ -1,0 +1,48 @@
+duration_estimation_milliseconds: 180000
+voice_instruction: Read this while crying and scared, in whispering and weeping tone.
+
+Speaker 1:
+
+<p1 image_prompt="bedroom floating above an endless ocean, ceiling made of blinking eyes, pillow gently breathing">I think it was a dream. But it didn’t feel like one. The bed wasn’t on the floor. It was above water. The ceiling watched me sleep.</p1>
+
+<p2 image_prompt="calendar with all dates replaced by the same day, written in handwriting that isn’t yours">There was a calendar. Every day was today. The handwriting said it was mine, but I’ve never written like that. It curled wrong.</p2>
+
+<p3 image_prompt="doorframe with no door, but when stepped through, reenters the same room from the ceiling">I tried to leave. There was no door. Just a frame. When I stepped through, I came back in from above. I was already in the bed, sleeping.</p3>
+
+<p4 image_prompt="cup of coffee, but the steam spells out words in a language you almost remember">The coffee whispered something. In a voice I knew from childhood nightmares. The steam spelled words I forgot as soon as I looked away.</p4>
+
+<p5 image_prompt="closet full of coats, but they’re hanging upside down, sleeves twitching slightly">I opened the closet. The coats were upside down. Hanging from sleeves. And they were… breathing. I think they knew I was watching.</p5>
+
+<p6 image_prompt="family photo but your face is replaced with a static blur, and everyone else is pointing at you">There was a photo on the wall. A family. My family, I think. But my face was just static. Everyone else was pointing. Smiling too wide.</p6>
+
+<p7 image_prompt="window view of a backyard, but the sky is underground and trees grow downward">I looked outside. The ground was sky. The sky was dirt. Trees grew down from it, like roots. One of them waved at me.</p7>
+
+<p8 image_prompt="television that plays only one frame repeatedly: Speaker 1 screaming in an empty room">The TV was stuck on one image. Me. Screaming. Over and over. My mouth moved but there was no sound. Just the ticking of the house.</p8>
+
+<p9 image_prompt="mirror that reflects a younger version of you, crying, mouthing something you don’t remember doing">The mirror didn’t show me now. It showed me as a child. Crying. Mouthing something. I pressed my hand to the glass and he screamed.</p9>
+
+<p10 image_prompt="staircase that folds upward into the ceiling like paper, with people’s feet visible at the top">I climbed the stairs. They folded up like paper behind me. There were feet at the top. Bare feet. But no bodies. Just… waiting.</p10>
+
+<p11 image_prompt="fridge full of clocks, each ticking at different rhythms, some ticking backward">The fridge was full of clocks. No food. Just time, arguing with itself. One ticked backwards. I think it was mine.</p11>
+
+<p12 image_prompt="open book on a table, but each page is covered in photographs of your sleeping body from impossible angles">There was a book on the table. Pages filled with photos. All of me. Sleeping. From angles that don’t exist.</p12>
+
+<p13 image_prompt="empty hallway, but a second shadow follows behind you with a delay">I ran. Down the hall. But I had two shadows. One that moved late. One that smiled without a face when I didn’t look directly at it.</p13>
+
+<p14 image_prompt="bedroom wall with a door drawn in crayon, slightly open, leaking light that hums">In my room, someone had drawn a door in crayon. It was slightly open. Light spilled out. It hummed like my name, but not how it should sound.</p14>
+
+<p15 image_prompt="birthday cake with too many candles, all melting backward into wax figures of your face">There was a cake. My birthday? I think. Too many candles. Melting backward. Into tiny wax people. They all looked like me.</p15>
+
+<p16 image_prompt="a figure under the bedsheet, but when pulled back, the sheet is still heavy, like someone is still there">Someone was under the blanket. I pulled it back. Nothing. But the sheet stayed heavy. It breathed when I touched it.</p16>
+
+<p17 image_prompt="note on a mirror that reads 'WAKE UP' but every time you blink, a letter disappears">I found a note. “WAKE UP.” But the letters were fading every time I blinked. Until only “UP” was left. And then… not even that.</p17>
+
+<p18 image_prompt="a looped video on a screen showing you waking up, over and over, but each version is more wrong">I woke up. I think. But I was still in the bed. On the screen, I watched myself wake up. Over and over. Each time… more wrong. Less human.</p18>
+
+<p19 image_prompt="reflection in a puddle showing you sleeping somewhere else, hooked to wires, mouth stitched shut">I saw myself in a puddle. Not here. Somewhere else. Sleeping. Wired up. Mouth sewn shut. But my eyes—they were wide open.</p19>
+
+<p20 image_prompt="a room filled with hundreds of beds, all occupied by identical versions of you, all murmuring in sync">And then I found the room. Full of beds. Full of me. Every bed… another me. All whispering at once: “Don’t wake her.”</p20>
+
+<p21 image_prompt="a close-up of your own eye, but inside the iris is the house you just walked through">And I understood. I’m not dreaming. I’m the dream. She’s still asleep. I’m just the noise her brain makes when she turns too deep.</p21>
+
+<p22 image_prompt="mirror held by hands that aren’t yours, showing someone else's face instead of your own">If you're hearing this… then she’s waking up. And you’re part of it now. Look in the mirror. Tell me whose face you see.</p22>

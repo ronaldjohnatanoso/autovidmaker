@@ -66,7 +66,7 @@ def duration(start, end):
 def find_next_stage(status):
     for stage in STAGE_ORDER:
         stage_info = status["stages"].get(stage, {})
-        if stage_info.get("status") not in ("done", "in_progress"):
+        if stage_info.get("status") not in ("done"):
             return stage
     return None
 
@@ -91,8 +91,113 @@ def run_stage(project_name, stage):
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python orchestrator.py <project_name> [--autoprocess | --autoprocess-all | --staging | <stage>]")
-        sys.exit(1)
+        # Express mode: auto-find first .txt file in staging
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        staging_dir = os.path.join(script_dir, "1-script-staging")
+        
+        if not os.path.exists(staging_dir):
+            print(f"[ERROR] Staging directory not found: {staging_dir}")
+            sys.exit(1)
+        
+        # Find first .txt file
+        txt_files = [f for f in os.listdir(staging_dir) if f.endswith('.txt')]
+        if not txt_files:
+            print(f"[ERROR] No .txt files found in {staging_dir}")
+            sys.exit(1)
+        
+        script_file = txt_files[0]
+        project_name = os.path.splitext(script_file)[0]
+        
+        print(f"🚀 Express mode: Found script file: {script_file}")
+        print(f"📦 Project name: {project_name}")
+        print(f"📦 Validating and moving script using: validate_and_move.py")
+        
+        # Run the validation script
+        try:
+            subprocess.run(
+                ["python", "validate_and_move.py", script_file],
+                cwd=staging_dir,
+                check=True
+            )
+            print("✅ Validation and move completed successfully.")
+            
+            # After successful validation, start the full pipeline
+            print(f"🚀 Starting full pipeline for project: {project_name}")
+            
+            # Load project and start autoprocess_all
+            project_path = get_project_path(project_name)
+            if not os.path.isdir(project_path):
+                print(f"[ERROR] Project folder not found after staging: {project_path}")
+                sys.exit(1)
+            
+            status_path = get_status_path(project_path)
+            status = load_status(status_path)
+            
+            # Define process_stage function for express mode
+            def process_stage(stage):
+                missing = check_inputs(project_path, project_name, stage)
+                stage_data = status["stages"].get(stage, {})
+                start_time = now_utc()
+
+                if missing:
+                    stage_data.update({
+                        "status": "error",
+                        "started_at": start_time,
+                        "error": f"Missing input files: {missing}"
+                    })
+                    status["stages"][stage] = stage_data
+                    write_status(status, status_path)
+                    print(f"[❌] Missing input files for stage '{stage}':")
+                    for m in missing:
+                        print(f" - {m}")
+                    return False
+
+                stage_data.update({
+                    "status": "in_progress",
+                    "started_at": start_time,
+                    "error": None
+                })
+                status["stages"][stage] = stage_data
+                write_status(status, status_path)
+
+                try:
+                    run_stage(project_name, stage)
+                except subprocess.CalledProcessError as e:
+                    stage_data.update({
+                        "status": "failed",
+                        "error": f"Process error: {str(e)}"
+                    })
+                    status["stages"][stage] = stage_data
+                    write_status(status, status_path)
+                    print(f"[✗] Stage '{stage}' failed.")
+                    return False
+
+                end_time = now_utc()
+                stage_data.update({
+                    "status": "done",
+                    "ended_at": end_time,
+                    "duration_seconds": duration(start_time, end_time)
+                })
+                status["stages"][stage] = stage_data
+                write_status(status, status_path)
+                print(f"[✅] Stage '{stage}' completed.")
+                return True
+            
+            # Run autoprocess_all
+            while True:
+                stage = find_next_stage(status)
+                if not stage:
+                    print("✅ All stages are completed.")
+                    break
+                print(f"▶️  Processing stage: {stage}")
+                success = process_stage(stage)
+                if not success:
+                    break
+            return
+            
+        except subprocess.CalledProcessError as e:
+            print(f"[ERROR] validate_and_move.py failed: {e}")
+            sys.exit(1)
 
     project_name = sys.argv[1]
     autoprocess = "--autoprocess" in sys.argv

@@ -1,0 +1,40 @@
+duration_estimation_milliseconds: 180000
+voice_instruction: Read this while crying and scared, in whispering and weeping tone.
+Speaker 1: <p1 image_prompt="dimly lit hallway with doors that are slightly too tall, wallpaper pattern repeating in impossible ways, no shadows">I didn’t remember renting the house. I just… woke up in it. The walls were warm. They shouldn't have been warm.</p1>
+
+<p2 image_prompt="family portrait in an old frame, everyone’s faces are smooth and featureless, painted smiles floating on skin">There were photos on the mantle. A family. A woman holding a baby. But when I blinked—her face was gone. Just skin. Just smooth, stretched skin. And I thought: maybe that’s normal.</p2>
+
+<p3 image_prompt="mirror reflection where the person is facing away, but reflection stares directly forward, too many teeth">I looked into the mirror and saw the back of my head. Until it turned. Slowly. Too slowly. And smiled at me. It had my teeth. But too many.</p3>
+
+<p4 image_prompt="Speaker 1 sitting at a dinner table alone, but there are hands reaching from under the tablecloth toward their lap">At dinner, I heard whispering under the table. Not voices. Breathing. I didn’t move. I just whispered back, “Not tonight.” And it stopped.</p4>
+
+<p5 image_prompt="refrigerator door open, inside is not food, but wet photographs of people with blurred faces, dripping">The fridge didn’t have food. It had photographs. Wet, stuck together. Each one of a face—blurry, melting, like they were trying to forget themselves.</p5>
+
+<p6 image_prompt="mannequin standing in corner of bedroom, but it's breathing slightly, fingers twitching, eyes glassy">There was something in the bedroom corner. A mannequin. But sometimes, I’d wake up, and its arms had moved. Just a little. Just enough to notice. Like it wanted me to catch it changing.</p6>
+
+<p7 image_prompt="close-up of telephone with a mouth instead of speaker, lips slightly parted, whispering something wet">The phone rang every night at 3:33 AM. When I answered, it didn’t speak—it breathed. And once, I swear it licked my ear.</p7>
+z
+<p8 image_prompt="TV screen turned off, but a pale face is pressed up against the glass from the inside, watching">I unplugged the TV, but it stayed on. Static faces flickering—faces I’d seen before. In dreams. In mirrors. Behind my eyelids when I blink too long.</p8>
+
+<p9 image_prompt="children's drawing on wall, stick figure of Speaker 1 being pulled underground by smiling people">There were drawings on the wall. Crayons. Child’s handwriting. They drew me being dragged underground. Smiling stick people holding my arms. The word “HOME” written in red.</p9>
+
+<p10 image_prompt="ceiling with human hands pressing through it from above, stretching the plaster, fingers tapping">The ceiling… taps back. Sometimes I tap once, and it taps three times. Morse code. I translated it once. It spelled “SOON.”</p10>
+
+<p11 image_prompt="clock with hands spinning wildly, numbers rearranged to form the word 'HER'">The clocks don’t tell time anymore. The hands spin, but the numbers—god, the numbers keep shifting into letters. They always say HER.</p11>
+
+<p12 image_prompt="dark hallway with Speaker 1 standing at the end, but there's a duplicate of them just behind, smiling too wide">One night I saw myself at the end of the hall. But I didn’t move. The other me did. And I smiled. And it smiled back. And I swear it whispered, “You’re almost ready.”</p12>
+
+
+
+<p13 image_prompt="family dinner table with everyone facing away from the food, heads tilted backwards too far, mouths gaping">Then, I remembered her. The woman. The one from the photo. She came to dinner one night. Sat down across from me. She had no face. But I recognized her. I asked, “Are you my wife?” And she nodded.</p13>
+
+<p14 image_prompt="wedding photo but the groom is blurred out completely, and bride’s face is replaced with a spiral">She said: “You were supposed to stay asleep.” She didn’t say it with a mouth. She said it inside my bones. And I remembered. I remembered.</p14>
+
+
+
+<p15 image_prompt="hospital bed with Speaker 1 hooked to machines, but instead of wires, they are bird bones and hair strands">I’m not awake. I never was. I’m inside her. Inside the house. Inside the loop. I’m a memory she keeps reliving. Every night. Every nightmare.</p15>
+
+<p16 image_prompt="a reflection in a spoon, but it’s not of Speaker 1—it’s the faceless woman, staring directly out">I’m not the real one. I was never me. I was her. I am her. And she wants out.</p16>
+
+
+<p17 image_prompt="empty room with recording device playing on its own, voice saying 'I remember her face… but she didn’t have one.'">And if you're hearing this... she found a new face.</p17>

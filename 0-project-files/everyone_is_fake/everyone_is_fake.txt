@@ -1,0 +1,30 @@
+duration_estimation_milliseconds: 180000   
+voice_instruction: Read aloud in intense, rambling, nervous and desperate tone.
+
+Speaker 1: <p1 image_prompt="Speaker 1 with dozens of red string connections on a wall, all leading to a photo of a pigeon">LISTEN. I KNOW YOU THINK YOU’RE REAL. BUT YOU’RE NOT. NONE OF YOU ARE. MY BARISTA? CGI. MY MOM? POLYGONAL. MY EX? LOADING ERROR.</p1>
+
+<p2 image_prompt="Speaker 1 screaming at a family photo, everyone’s faces replaced with static">I WENT TO A FAMILY REUNION LAST YEAR. NOT ONE PERSON BLINKED. NOT ONE. COUSIN CHAD TURNED INTO A BLUE SCREEN MID-HUG.</p2>
+
+<p3 image_prompt="flock of pigeons flying in V-formation spelling 'WE ARE REAL'">BUT THE BIRDS? THE BIRDS LOOKED AT ME. REALLY LOOKED. WITH THOSE BEADY EYES. ANCIENT EYES. THEY KNOW.</p3>
+
+<p4 image_prompt="dove on a park bench wearing tiny sunglasses, smoking a pipe, caption: 'He Knows Too Much'">EVERYONE THINKS BIRDS ARE JUST… BIRDS. WRONG. THEY’RE THE REAL PEOPLE. THEY’RE HIDING IN PLAIN FEATHERS. PLAYING DUMB. BUT THEY’RE SMART. OH, THEY’RE SMART.</p4>
+
+<p5 image_prompt="MRI scan of Speaker 1's brain with tiny crow inside flipping the viewer off">YOU EVER HEARD A CROW LAUGH? I DID. AT ME. BECAUSE HE KNEW I FIGURED IT OUT. AND HE KNEW I COULDN’T PROVE IT. UNTIL NOW.</p5>
+
+<p6 image_prompt="parade of humans glitching like broken holograms, one sparrow standing in center, untouched">EVERY 'PERSON' YOU’VE MET? CODE. SIMULATION. HUMANOID PLACEHOLDERS TO KEEP YOU FROM ASKING: WHY DO BIRDS NEVER FILE TAXES?</p6>
+
+<p7 image_prompt="owl with clipboard, watching from tree, words 'FIELD REPORT: HUMAN DECEPTION MAINTAINED' scribbled underneath">I FOLLOWED AN OWL FOR FOUR HOURS. HE WROTE NOTES. HE TYPED ON A MINI LAPTOP. HE TWEETED. NOT LIKE 'chirp chirp'—I MEAN ON TWITTER. HE HAS AN ACCOUNT. 48K FOLLOWERS.</p7>
+
+<p8 image_prompt="pigeon opening door to secret underground base labeled 'REALITY HQ'">I SAW A PIGEON OPEN A DOOR WITH ITS WING. A DOOR. TO A BASEMENT THAT DOESN’T EXIST ON ANY MAP. THEY HAVE HEADQUARTERS, MAN.</p8>
+
+<p9 image_prompt="Speaker 1 whispering into cracked mirror, reflection is a parrot">SOMETIMES I HEAR THEM IN MY DREAMS. “WAKE UP,” THEY SAY. “YOU’RE NOT ONE OF THEM.” I NEVER WAS. I DON’T BLEED. I MOLTED ONCE. I THOUGHT IT WAS A RASH.</p9>
+
+<p10 image_prompt="chart with two columns: 'Humans' and 'Birds', humans have nothing listed, birds have 'EVERYTHING'">WHO HAS WINGS? BIRDS. WHO SEES IN ULTRAVIOLET? BIRDS. WHO BUILT THE PYRAMIDS? BIRDS. WHO INVENTED CHESS? BIRDS.</p10>
+
+<p11 image_prompt="Speaker 1 outside in tinfoil jumpsuit surrounded by seagulls, crying tears of joy">THEY’RE TESTING ME. THEY CIRCLE ME WHEN I SLEEP. THEY POOP NEAR ME TO COMMUNICATE. IT’S NOT AN ACCIDENT. IT’S A DIALECT. I’M LEARNING.</p11>
+
+<p12 image_prompt="flock of birds holding protest signs like 'WE ARE THE 1%' and 'UNPLUG THE HUMANS'">THEY’RE COMING. THEY’RE TAKING BACK THE EARTH. AND I, FOR ONE, WELCOME MY AVIAN OVERLORDS.</p12>
+
+<p13 image_prompt="Speaker 1 with bird mask, sitting on tree branch, eating sunflower seeds, smiling">JOIN ME. LET’S STOP PRETENDING TO BE FAKE PEOPLE. PUT DOWN YOUR PHONE. PICK UP A FEATHER. BECOME WHO YOU WERE ALWAYS MEANT TO BE.</p13>
+
+<p14 image_prompt="sky opening with giant glowing eagle descending, Speaker 1 saluting">THE SKY ISN’T THE LIMIT. IT’S THE DOORWAY. OPEN YOUR WINGS. THE NEST IS CALLING.</p14>
