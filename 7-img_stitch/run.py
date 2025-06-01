@@ -78,8 +78,6 @@ ENABLE_GLITCH_EFFECT = False  # Disable glitch
 GLITCH_PROBABILITY = 0.001  # Much lower chance
 GLITCH_INTENSITY = 5  # Reduced intensity
 
-ENABLE_RAINBOW_TEXT = False  # Disable rainbow text for now to avoid errors
-
 class GlobalMotionState:
     """Manages motion state across the ENTIRE video timeline - shared between all threads"""
     
@@ -386,7 +384,6 @@ class SegmentProcessor:
             if duration <= 0:
                 return None
             
-            # SIMPLIFIED - NO RAINBOW TEXT (was causing errors)
             # Create base text clip
             txt_clip = TextClip(
                 sub['text'],
@@ -397,22 +394,26 @@ class SegmentProcessor:
                 stroke_width=SUBTITLE_STROKE_WIDTH
             ).set_duration(duration).set_position(('center', SUBTITLE_POSITION_Y))
             
-            # Apply scale effect using absolute timeline - MAKE IT MORE DRAMATIC
-            if SCALE_EFFECT:  # REMOVED duration check to make it always work
-                def optimized_scale_function(t):
-                    # Scale effect happens at the beginning of EVERY subtitle
-                    if t < SCALE_DURATION:
-                        progress = t / SCALE_DURATION
-                        if progress < 0.6:
-                            scale = 1.0 + (SCALE_FACTOR - 1.0) * (progress / 0.6)
-                        else:
-                            overshoot = 1.3  # MORE overshoot
-                            bounce_progress = (progress - 0.6) / 0.4
-                            scale = SCALE_FACTOR * overshoot - (SCALE_FACTOR * (overshoot - 1.0)) * bounce_progress
-                        return scale
-                    return 1.0
+            # SMART SCALE EFFECT - Only for emphasis words
+            if SCALE_EFFECT:
+                # Calculate if this word should be emphasized
+                should_emphasize = self._should_emphasize_word(sub, segment_start)
                 
-                txt_clip = txt_clip.resize(optimized_scale_function)
+                if should_emphasize:
+                    def optimized_scale_function(t):
+                        # Scale effect happens at the beginning of EMPHASIZED subtitles only
+                        if t < SCALE_DURATION:
+                            progress = t / SCALE_DURATION
+                            if progress < 0.6:
+                                scale = 1.0 + (SCALE_FACTOR - 1.0) * (progress / 0.6)
+                            else:
+                                overshoot = 1.3  # MORE overshoot for emphasis
+                                bounce_progress = (progress - 0.6) / 0.4
+                                scale = SCALE_FACTOR * overshoot - (SCALE_FACTOR * (overshoot - 1.0)) * bounce_progress
+                            return scale
+                        return 1.0
+                    
+                    txt_clip = txt_clip.resize(optimized_scale_function)
             
             # Apply shake using absolute timeline
             if ENABLE_SHAKE_EFFECT:
@@ -436,6 +437,59 @@ class SegmentProcessor:
             import traceback
             traceback.print_exc()
             return None
+    
+    def _should_emphasize_word(self, current_sub, segment_start):
+        """Determine if a word should be emphasized based on timing gaps"""
+        current_duration = current_sub['end'] - current_sub['start']
+        
+        # Find the next subtitle
+        next_sub = None
+        min_start_time = float('inf')
+        
+        for sub in self.subtitles:
+            if sub['start'] > current_sub['end'] and sub['start'] < min_start_time:
+                min_start_time = sub['start']
+                next_sub = sub
+        
+        # Calculate gap to next word
+        if next_sub:
+            gap_to_next = next_sub['start'] - current_sub['end']
+        else:
+            gap_to_next = 0.0
+        
+        # Emphasis criteria:
+        # 1. Gap to next word is longer than 0.3 seconds (dramatic pause)
+        # 2. Word duration is longer than 0.4 seconds (slow/emphasized speech)
+        # 3. Word contains emphasis indicators (caps, punctuation)
+        
+        has_dramatic_pause = gap_to_next > 0.3
+        has_long_duration = current_duration > 0.4
+        has_emphasis_text = self._has_text_emphasis(current_sub['text'])
+        
+        # Emphasize if any criteria is met
+        should_emphasize = has_dramatic_pause or has_long_duration or has_emphasis_text
+        
+        # if should_emphasize:
+        #     print(f"Emphasizing word '{current_sub['text']}' - pause: {gap_to_next:.2f}s, duration: {current_duration:.2f}s, text_emphasis: {has_emphasis_text}")
+        
+        return should_emphasize
+    
+    def _has_text_emphasis(self, text):
+        """Check if text has emphasis indicators"""
+        text = text.strip()
+        
+        # Check for emphasis indicators
+        emphasis_indicators = [
+            text.isupper() and len(text) > 1,  # ALL CAPS words
+            text.endswith('!'),                # Exclamation
+            text.endswith('?'),                # Question
+            text.endswith('...'),              # Ellipsis
+            text.startswith('*') or text.endswith('*'),  # Asterisk emphasis
+            len(text) > 8,                     # Long words tend to be important
+            text.lower() in ['wow', 'amazing', 'incredible', 'unbelievable', 'whoa', 'damn', 'shit', 'fuck', 'holy', 'god', 'jesus', 'what', 'why', 'how', 'really', 'seriously', 'literally', 'actually', 'definitely', 'absolutely', 'completely', 'totally', 'perfect', 'insane', 'crazy', 'wild', 'epic', 'legendary']  # Emphasis words
+        ]
+        
+        return any(emphasis_indicators)
 
     def _create_segment_watermark(self, duration):
         """Create watermark for segment"""
