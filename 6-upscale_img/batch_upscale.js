@@ -51,15 +51,16 @@ const args = [
 ];
 
 // Run the upscaling command
-execFile(cmd, args, (error, stdout, stderr) => {
+execFile(cmd, args, { stdio: 'ignore' }, (error, stdout, stderr) => {
   if (error) {
     console.error('❌ Error:', error.message);
     return;
   }
   if (stderr) {
-    console.error('⚠️ stderr:', stderr);
+    console.error('❌ Stderr:', stderr);
+    return;
   }
-
+  
   // Update status to completed after command finishes
   const endTime = new Date();
   const startTime = new Date(statusData.stages.upscale_img.started_at);

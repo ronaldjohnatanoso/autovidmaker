@@ -4,13 +4,12 @@ const path = require("path");
 const { execSync, spawn } = require("child_process");
 
 const start_time = Date.now();
-let end_time = null
+let end_time = null;
 
 const killChromeScript = path.join(__dirname, "kill-chrome-debug.sh");
 const launchChromeScript = path.join(__dirname, "load-chrome.sh");
 
 const TIME_OFFSET = (1000 * 60) * 5; // 5 mins offset for network idle wait
-
 
 function runShellScriptSync(scriptPath, name) {
   try {
@@ -57,8 +56,12 @@ function delay(ms) {
   }
   const config = JSON.parse(fs.readFileSync(configFilePath, "utf8"));
 
-
   const estimatedMilliseconds = config["stages"]["voice_gen"]["estimated_duration_ms"];
+
+
+  // Get voice effect from config
+  const VOICE_EFFECT = config["stages"]["voice_gen"]["voice_effect"] || "none";
+
 
   // Output audio path: ../0-project-files/<projectName>/<projectName>.wav
   const outputAudioPath = path.join(projectFolder, `${projectName}.wav`);
@@ -91,7 +94,6 @@ function delay(ms) {
   await page.setUserAgent(
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
   );
-
 
   await page.goto("https://aistudio.google.com/generate-speech", {
     waitUntil: "networkidle2",
@@ -126,8 +128,6 @@ function delay(ms) {
   // Select speaker 1
   const speaker1 = config["stages"]["voice_gen"]["speaker1"];
   const speaker2 = config["stages"]["voice_gen"]["speaker2"];
-
- 
 
   await page.waitForSelector(`text/play_circle ${speaker1}`, { visible: true });
   await page.click(`text/play_circle ${speaker1}`);
@@ -180,7 +180,7 @@ function delay(ms) {
     //   timeout: estimatedMilliseconds + 5000, // Wait for estimated duration + 10 seconds
     //   idleTime: 5000, // Wait for 5 seconds of network idle
     // })
-    await page.waitForSelector("audio", { visible: true, timeout: estimatedMilliseconds + TIME_OFFSET});
+    await page.waitForSelector("audio", { visible: true, timeout: estimatedMilliseconds + TIME_OFFSET });
     console.log("🔊 Audio element found!");
   } catch (error) {
     console.error("❌ Error while waiting for audio element:", error);
@@ -222,8 +222,29 @@ function delay(ms) {
   await browser.close();
   console.log("✅ Browser closed");
 
-
   runShellScriptSync(killChromeScript, "kill-chrome-debug.sh");
+
+  console.log("voice effect chosen:", VOICE_EFFECT);
+
+  // Apply voice effect if specified
+  if (VOICE_EFFECT && VOICE_EFFECT.toLowerCase() !== "none") {
+    console.log(`🎙️ Applying voice effect: ${VOICE_EFFECT}`);
+    try {
+      // Run the voice changer script
+      const voiceChangeScript = path.join(__dirname, "voicechange.js");
+      execSync(`node "${voiceChangeScript}" "${projectName}" "${VOICE_EFFECT}"`, {
+        stdio: "inherit",
+        cwd: __dirname,
+      });
+      console.log(`✅ Voice effect ${VOICE_EFFECT} applied successfully`);
+    } catch (error) {
+      console.error(`❌ Error applying voice effect: ${error.message}`);
+      // Don't exit here - the original audio is still available
+    }
+  } else {
+    console.log("⏭️ Skipping voice effect processing");
+  }
+
   end_time = Date.now();
   console.log(`⏱️ Total time taken: ${(end_time - start_time) / 1000} seconds`);
 })();

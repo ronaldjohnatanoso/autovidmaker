@@ -982,7 +982,11 @@ def parse_srt(srt_path):
     return subtitles
 
 def add_audio_with_ffmpeg(video_path, audio_path, background_music_path, output_path):
-    """Use FFmpeg to add audio to the concatenated video"""
+    """Use FFmpeg to add audio to the concatenated video with two-pass compression"""
+    
+    # STEP 1: Add audio (keeping fast video encoding)
+    temp_video_with_audio = output_path.replace('.mp4', '_temp_with_audio.mp4')
+    
     cmd = ['ffmpeg', '-y', '-i', video_path]
     
     filter_complex = []
@@ -1023,25 +1027,52 @@ def add_audio_with_ffmpeg(video_path, audio_path, background_music_path, output_
         # No audio
         cmd.extend(['-map', '0:v'])
     
-    # Output settings
+    # STEP 1: Create temp file with audio but keep fast video encoding
     cmd.extend([
-        '-c:v', 'copy',  # Copy video stream
+        '-c:v', 'copy',  # Keep the ultrafast-encoded video as-is
         '-c:a', 'aac',   # Encode audio as AAC
         '-shortest',     # End when shortest stream ends
-        output_path
+        temp_video_with_audio
     ])
     
-    print(f"Adding audio to video...")
-    
-    # Create a simple progress indicator for FFmpeg
-    print("Running FFmpeg audio processing...")
+    print(f"Step 1: Adding audio (keeping fast video encoding)...")
     result = subprocess.run(cmd, capture_output=True, text=True)
     
     if result.returncode != 0:
         print(f"FFmpeg audio error: {result.stderr}")
         return False
     
-    print(f"Successfully added audio: {output_path}")
+    print(f"Step 1 complete: {temp_video_with_audio}")
+    
+    # STEP 2: Re-compress the video with much better compression settings
+    print("Step 2: Re-compressing video for much smaller file size...")
+    print("(This will take longer but reduce file size by 60-80%)")
+    
+    compress_cmd = [
+        'ffmpeg', '-y',
+        '-i', temp_video_with_audio,
+        '-c:v', 'libx264',
+        '-preset', 'medium',    # Much better compression than 'ultrafast'
+        '-crf', '23',          # Higher CRF = smaller file (was 18)
+        '-c:a', 'copy',        # Don't re-encode the audio we just added
+        '-movflags', '+faststart',  # Optimize for web streaming
+        output_path
+    ]
+    
+    print("Running FFmpeg compression (this is the slow part)...")
+    result = subprocess.run(compress_cmd, capture_output=True, text=True)
+    
+    # Clean up temp file
+    if os.path.exists(temp_video_with_audio):
+        os.unlink(temp_video_with_audio)
+        print("Cleaned up temporary file")
+    
+    if result.returncode != 0:
+        print(f"FFmpeg compression error: {result.stderr}")
+        return False
+    
+    print(f"Successfully compressed video: {output_path}")
+    print("File size should now be 60-80% smaller than before!")
     return True
 
 if __name__ == "__main__":

@@ -1,0 +1,20 @@
+duration_estimation_milliseconds: 100000
+voice_instruction: Low, level, like you’re explaining something obvious and no longer emotional about it.
+
+Speaker 1: <p1 image_prompt="person alone on a bench, early morning, street empty, sky grey">Why would anyone care about you? I mean… really. Who the hell are you?</p1>
+
+<p2 image_prompt="name tag on the ground, dirty and unreadable, trampled by feet">You’re another name in a sea of names. Background noise. Replaceable. Forgettable.</p2>
+
+<p3 image_prompt="vast desert with a single small figure walking, horizon swallowing them">And you know what? That’s fine. That’s freedom.</p3>
+
+<p4 image_prompt="matchstick burning in a cave, no one around, just the glow on stone">If nobody’s watching, there’s no act to perform. No weight to carry but your own.</p4>
+<p5 image_prompt="hand holding a cracked mirror, reflection smiling with missing pieces">You get to define what matters. Not them. Not the world. You.</p5>
+<p6 image_prompt="person quietly building something out of scrap in a dark room, no one clapping, just focused">So build what you want. Even if no one sees it. Especially then. It’s yours.</p6>
+
+<p7 image_prompt="a paper note pinned to a tree in the middle of nowhere, it just says 'STILL HERE'">Don’t wait to be important. Don’t wait to be seen. You’re already happening.</p7>
+
+<p8 image_prompt="a lit candle under pouring rain, somehow not going out">You’re not here to be remembered. You’re here to live — even if it’s pointless. Especially if it’s pointless.</p8>
+
+<p9 image_prompt="blank billboard in a field, someone spray-painted 'NO ONE CARES, DO IT ANYWAY'">Let insignificance be a relief. No pressure. No stage. Just motion. Just breath. Just defiance in the face of nothing.</p9>
+
+<p10 image_prompt="a quiet smirk in the reflection of a train window, world blurring past, and you don’t look back">You don’t need to matter to anyone. You just need to keep going. And that... might be the most powerful thing left.</p10>

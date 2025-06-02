@@ -1,8 +1,8 @@
 {
   "stages": {
     "voice_gen": {
-      "estimated_duration_ms": 180000,
-      "speaker1": "Schedar",
+      "estimated_duration_ms": 100000,
+      "speaker1": "Sadachbia",
       "speaker2": "Gacrux",
       "voice_effect": "telephone"
     },
@@ -10,7 +10,9 @@
     "img_prompts": {},
     "image_gen": {},
     "upscale_img": {},
-    "img_stitch": {},
+    "img_stitch": {
+      "background_music_file": "curious.mp3"
+    },
     "vid_edit": {}
   }
 }
