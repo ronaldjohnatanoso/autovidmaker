@@ -203,15 +203,6 @@ class SegmentProcessor:
         
         # OPTIMIZED: Pre-process subtitles for faster lookups
         self._preprocess_subtitles()
-        
-        # OPTIMIZED: Pre-compile emphasis words set for O(1) lookup
-        self._emphasis_words = {
-            'wow', 'amazing', 'incredible', 'unbelievable', 'whoa', 'damn', 
-            'shit', 'fuck', 'holy', 'god', 'jesus', 'what', 'why', 'how', 
-            'really', 'seriously', 'literally', 'actually', 'definitely', 
-            'absolutely', 'completely', 'totally', 'perfect', 'insane', 
-            'crazy', 'wild', 'epic', 'legendary'
-        }
     
     def _preprocess_subtitles(self):
         """OPTIMIZED: Pre-sort subtitles and create lookup maps"""
@@ -474,7 +465,7 @@ class SegmentProcessor:
             return None
     
     def _should_emphasize_word(self, current_sub, segment_start):
-        """OPTIMIZED: Determine emphasis using pre-computed lookups"""
+        """OPTIMIZED: Determine emphasis using ONLY timing criteria"""
         current_duration = current_sub['end'] - current_sub['start']
         
         # OPTIMIZED: O(1) lookup for next subtitle
@@ -483,47 +474,13 @@ class SegmentProcessor:
         # Calculate gap to next word
         gap_to_next = next_sub['start'] - current_sub['end'] if next_sub else 0.0
         
-        # OPTIMIZED: Simple boolean checks (no list iterations)
-        has_dramatic_pause = gap_to_next > 0.3
-        has_long_duration = current_duration > 0.4
-        has_emphasis_text = self._has_text_emphasis_fast(current_sub['text'])
+        # ONLY timing-based emphasis criteria:
+        has_dramatic_pause = gap_to_next > 0.3  # Gap to next word > 0.3 seconds
+        has_long_duration = current_duration > 0.4  # Word duration > 0.4 seconds
         
-        should_emphasize = has_dramatic_pause or has_long_duration or has_emphasis_text
+        should_emphasize = has_dramatic_pause or has_long_duration
         
         return should_emphasize
-    
-    def _has_text_emphasis_fast(self, text):
-        """OPTIMIZED: Fast text emphasis check with early returns"""
-        text = text.strip()
-        
-        # OPTIMIZED: Early returns for fastest checks first
-        if len(text) <= 1:
-            return False
-            
-        # Check punctuation (fastest)
-        if text[-1] in '!?':
-            return True
-            
-        if text.endswith('...'):
-            return True
-            
-        # Check caps (fast)
-        if text.isupper():
-            return True
-            
-        # Check asterisks (fast)
-        if text.startswith('*') and text.endswith('*'):
-            return True
-            
-        # Check length (fast)
-        if len(text) > 8:
-            return True
-            
-        # OPTIMIZED: O(1) set lookup instead of O(n) list search
-        if text.lower() in self._emphasis_words:
-            return True
-        
-        return False
 
     def _create_segment_watermark(self, duration):
         """Create watermark for segment"""
