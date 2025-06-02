@@ -1,66 +1,66 @@
 {
-  "created_at": "2025-06-02T14:17:39.352155Z",
+  "created_at": "2025-06-02T14:42:02.010674Z",
   "current_stage": "voice_gen",
   "stages": {
     "voice_gen": {
       "status": "done",
-      "started_at": "2025-06-02T14:17:39.355828Z",
+      "started_at": "2025-06-02T14:42:02.015038Z",
       "completed_at": null,
       "duration": null,
       "error": null,
       "metadata": {},
-      "ended_at": "2025-06-02T14:19:00.365530Z",
-      "duration_seconds": 81.009702
+      "ended_at": "2025-06-02T14:43:16.386692Z",
+      "duration_seconds": 74.371654
     },
     "captions": {
       "status": "done",
-      "started_at": "2025-06-02T14:19:00.365930Z",
+      "started_at": "2025-06-02T14:43:16.387196Z",
       "completed_at": null,
       "duration": null,
       "error": null,
       "metadata": {},
-      "ended_at": "2025-06-02T14:19:08.744735Z",
-      "duration_seconds": 8.378805
+      "ended_at": "2025-06-02T14:43:25.258385Z",
+      "duration_seconds": 8.871189
     },
     "img_prompts": {
       "status": "done",
-      "started_at": "2025-06-02T14:19:08.745210Z",
+      "started_at": "2025-06-02T14:43:25.259185Z",
       "completed_at": null,
       "duration": null,
       "error": null,
       "metadata": {},
-      "ended_at": "2025-06-02T14:19:08.978297Z",
-      "duration_seconds": 0.233087
+      "ended_at": "2025-06-02T14:43:25.486428Z",
+      "duration_seconds": 0.227243
     },
     "image_gen": {
       "status": "done",
-      "started_at": "2025-06-02T14:19:08.978591Z",
+      "started_at": "2025-06-02T15:00:22.675434Z",
       "completed_at": null,
       "duration": null,
       "error": null,
       "metadata": {},
-      "ended_at": "2025-06-02T14:22:24.168254Z",
-      "duration_seconds": 195.189663
+      "ended_at": "2025-06-02T15:00:50.867193Z",
+      "duration_seconds": 28.191759
     },
     "upscale_img": {
       "status": "done",
-      "started_at": "2025-06-02T14:22:24.168654Z",
+      "started_at": "2025-06-02T15:00:50.867899Z",
       "completed_at": null,
       "duration": null,
       "error": null,
       "metadata": {},
-      "ended_at": "2025-06-02T14:24:04.836323Z",
-      "duration_seconds": 100.667669
+      "ended_at": "2025-06-02T15:02:33.745863Z",
+      "duration_seconds": 102.877964
     },
     "img_stitch": {
       "status": "done",
-      "started_at": "2025-06-02T14:24:04.836862Z",
+      "started_at": "2025-06-02T15:02:33.746685Z",
       "completed_at": null,
       "duration": null,
       "error": null,
       "metadata": {},
-      "ended_at": "2025-06-02T14:29:06.243785Z",
-      "duration_seconds": 301.406923
+      "ended_at": "2025-06-02T15:07:53.070589Z",
+      "duration_seconds": 319.323904
     },
     "vid_edit": {
       "status": "pending",

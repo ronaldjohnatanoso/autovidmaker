@@ -57,7 +57,7 @@ execFile(cmd, args, { stdio: 'ignore' }, (error, stdout, stderr) => {
     return;
   }
   if (stderr) {
-    console.error('❌ Stderr:', stderr);
+    // console.error('❌ Stderr:', stderr);
     return;
   }
   

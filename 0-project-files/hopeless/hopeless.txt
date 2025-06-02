@@ -1,0 +1,28 @@
+duration_estimation_milliseconds: 180000
+voice_instruction: Monotone. Tired. As if you’ve already said this a hundred times. Speak like the world ended years ago and nobody noticed.
+
+Speaker 1:
+
+<p1 image_prompt="person sitting in a dark room, light flickering from an old TV showing static">There’s no grand lesson here. No moment of clarity. Just another night that bleeds into another morning that doesn’t matter.</p1>
+
+<p2 image_prompt="street full of people all looking down, faces blurred, moving like ghosts">Everyone’s moving. Talking. Smiling. But it’s all noise. No one’s really here. They never were.</p2>
+
+<p3 image_prompt="clock with no hands, hung crooked on a stained wall">Time used to mean something. Now it just loops. Eats itself. Days recycle. Nothing sticks.</p3>
+
+<p4 image_prompt="photo album full of empty chairs, no people, just shadows where they should’ve been">I keep trying to remember faces. But even the memories rot. Everyone I ever loved feels like a dream I lied about having.</p4>
+
+<p5 image_prompt="mailbox overflowing with unopened letters labeled 'We Miss You', but the return address is blank">They say, 'You’ll be okay.' But they’re just trying to calm themselves. Nobody really knows what they're doing. They're just scared you'll say what they’re thinking.</p5>
+
+<p6 image_prompt="mannequin lying in a bed, staring at ceiling, arms folded like it never moved">Hope feels fake now. Like a commercial. Bright colors over a dead signal. I can’t even pretend to believe in it anymore. And honestly, I don’t miss it.</p6>
+
+<p7 image_prompt="window with rain sliding down, behind it a city out of focus, cold and colorless">Some nights I wonder what it would feel like to disappear, not in some dramatic way—just quietly. Like smoke. Like static fading out.</p7>
+
+<p8 image_prompt="reflection in a dirty mirror, except the person isn’t you—it’s a stranger, looking disappointed">And if someone found this, this voice, this thought… I don’t think it would matter. They’d just scroll past. Skip. Forget. We all do.</p8>
+
+<p9 image_prompt="calendar with every day scratched out, last page reads 'nothing left to wait for'">We keep looking forward like there’s something coming. Like there's a break in the sky. But there’s not. There never was.</p9>
+
+<p10 image_prompt="person standing in front of a giant exit sign that doesn’t lead anywhere, just a wall">Sometimes the exit is just another room. Same shape. Same silence. New wallpaper. Nothing changes.</p10>
+
+<p11 image_prompt="pile of burned-out lightbulbs, each one labeled with a year">You won’t be remembered. Neither will I. We were here, and then we weren’t. And the world won’t even flinch.</p11>
+
+<p12 image_prompt="a tape recorder in a field, playing back silence">If you're listening... don’t look for hope here. There’s none. Just the truth. Just the quiet. Just the end.</p12>

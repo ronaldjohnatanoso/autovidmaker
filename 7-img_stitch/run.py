@@ -51,17 +51,20 @@ ZOOM_RANGE = (1.0, 1.2)  # Min and max zoom levels
 PAN_SPEED = 0.05  # How fast to pan across the image
 
 # Background music constants
-BACKGROUND_MUSIC_FILE = "curious.mp3"  # Name of the background music file
-BACKGROUND_MUSIC_VOLUME = 0.5  # Volume level for background music (0.0 to 1.0)
+BACKGROUND_MUSIC_FILE = "motivation.mp3"  # Name of the background music file
+BACKGROUND_MUSIC_VOLUME = 0.4  # Volume level for background music (0.0 to 1.0)
+
+# Narration audio constants
+NARRATION_VOLUME = 1.5  # Volume level for narration audio (1.0 = normal, 1.5 = 50% louder, 2.0 = double volume)
 
 # Watermark constants
 WATERMARK_TEXT = "@unhingedWizard"  # The watermark text to display
-WATERMARK_FONTSIZE = 40  # Size of watermark text
-WATERMARK_COLOR = "white"  # White text color (use color names for better compatibility)
-WATERMARK_BG_COLOR = (0, 0, 0)  # Black background color as RGB tuple
 WATERMARK_FONT = 'Arial-Bold'  # Font for watermark
-WATERMARK_PADDING = 10  # Padding around the text
-WATERMARK_MARGIN = 0  # Distance from bottom-right corner
+WATERMARK_FONTSIZE = 24  # Font size for watermark
+WATERMARK_COLOR = 'white'  # Watermark text color
+WATERMARK_OPACITY = 0.7  # Overall watermark opacity (0.0 to 1.0)
+WATERMARK_STYLE = 'glow'  # Options: 'glow', 'shadow', 'outline', 'gradient', 'minimal'
+WATERMARK_MARGIN = 20  # Distance from bottom-right corner
 
 # Brain rot effect constants
 ENABLE_BREATHING_EFFECT = False  # Disable breathing effect
@@ -69,7 +72,7 @@ BREATHING_INTENSITY = 0.01  # Reduced even more
 BREATHING_SPEED = 0.5  # Much slower
 
 ENABLE_ROTATION_DRIFT = True  # Enable rotation drift
-ROTATION_RANGE = 3.0  # INCREASED rotation for visibility
+ROTATION_RANGE = 5.0  # INCREASED rotation for visibility
 
 # New brain rot effects
 ENABLE_SHAKE_EFFECT = False  # DISABLE SHAKE - this was causing vibration
@@ -89,10 +92,10 @@ ENABLE_TV_EFFECTS = True
 ENABLE_VIGNETTE = True
 VIGNETTE_STRENGTH = 0.6  # 0.0 to 1.0
 ENABLE_SCANLINES = True
-SCANLINE_INTENSITY = 0.3  # 0.0 to 1.0
+SCANLINE_INTENSITY = 0.6  # 0.0 to 1.0
 SCANLINE_COUNT = 540  # Number of scanlines (half of height for performance)
 ENABLE_TV_STATIC = True
-TV_STATIC_INTENSITY = 0.1  # 0.0 to 1.0
+TV_STATIC_INTENSITY = 0.3  # 0.0 to 1.0
 TV_STATIC_FREQUENCY = 0.02  # How often static appears (0.0 to 1.0)
 ENABLE_RGB_SHIFT = True
 RGB_SHIFT_INTENSITY = 2  # Pixel offset for chromatic aberration
@@ -510,47 +513,209 @@ class SegmentProcessor:
             return None
 
     def _create_segment_watermark(self, duration):
-        """Create watermark using PIL instead of MoviePy TextClip"""
+        """Create watermark with modern styling instead of boring black box"""
         try:
-            # Create watermark text image
-            watermark_img = self._create_text_image(
-                WATERMARK_TEXT,
-                WATERMARK_FONTSIZE,
-                WATERMARK_COLOR
-            )
+            if WATERMARK_STYLE == 'glow':
+                # Create glowing text effect
+                watermark_img = self._create_glow_text(
+                    WATERMARK_TEXT,
+                    WATERMARK_FONTSIZE,
+                    WATERMARK_COLOR
+                )
+            elif WATERMARK_STYLE == 'shadow':
+                # Drop shadow effect
+                watermark_img = self._create_shadow_text(
+                    WATERMARK_TEXT,
+                    WATERMARK_FONTSIZE,
+                    WATERMARK_COLOR
+                )
+            elif WATERMARK_STYLE == 'outline':
+                # Thick outline only
+                watermark_img = self._create_text_image(
+                    WATERMARK_TEXT,
+                    WATERMARK_FONTSIZE,
+                    WATERMARK_COLOR,
+                    'black',
+                    4  # Thick outline
+                )
+            elif WATERMARK_STYLE == 'minimal':
+                # Simple text with transparency
+                watermark_img = self._create_text_image(
+                    WATERMARK_TEXT,
+                    WATERMARK_FONTSIZE,
+                    WATERMARK_COLOR
+                )
+            else:  # gradient
+                watermark_img = self._create_gradient_text(
+                    WATERMARK_TEXT,
+                    WATERMARK_FONTSIZE
+                )
             
-            # Convert to ImageClip
+            # Convert to ImageClip with opacity
             txt_clip = ImageClip(watermark_img, duration=duration, transparent=True)
             
-            # Get dimensions
+            # Apply overall opacity
+            if WATERMARK_OPACITY < 1.0:
+                txt_clip = txt_clip.set_opacity(WATERMARK_OPACITY)
+            
+            # Position in bottom-right
             txt_height, txt_width = watermark_img.shape[:2]
+            watermark_x = TARGET_WIDTH - txt_width - WATERMARK_MARGIN
+            watermark_y = TARGET_HEIGHT - txt_height - WATERMARK_MARGIN
             
-            # Create background
-            bg_width = txt_width + (WATERMARK_PADDING * 2)
-            bg_height = txt_height + (WATERMARK_PADDING * 2)
-            
-            if isinstance(WATERMARK_BG_COLOR, str):
-                if WATERMARK_BG_COLOR.startswith('#'):
-                    hex_color = WATERMARK_BG_COLOR[1:]
-                    bg_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-                else:
-                    bg_color = (0, 0, 0)
-            else:
-                bg_color = WATERMARK_BG_COLOR
-            
-            bg_clip = ColorClip(size=(bg_width, bg_height), color=bg_color, duration=duration)
-            txt_positioned = txt_clip.set_position((WATERMARK_PADDING, WATERMARK_PADDING))
-            
-            watermark_composite = CompositeVideoClip([bg_clip, txt_positioned], size=(bg_width, bg_height))
-            
-            watermark_x = TARGET_WIDTH - bg_width - WATERMARK_MARGIN
-            watermark_y = TARGET_HEIGHT - bg_height - WATERMARK_MARGIN
-            
-            return watermark_composite.set_position((watermark_x, watermark_y))
+            return txt_clip.set_position((watermark_x, watermark_y))
             
         except Exception as e:
             print(f"Error creating watermark: {e}")
             return None
+
+    def _create_glow_text(self, text, fontsize, color):
+        """Create text with a glowing effect"""
+        try:
+            # Get font
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fontsize)
+            except:
+                font = ImageFont.load_default()
+            
+            # Calculate text size
+            dummy_img = Image.new('RGB', (1, 1))
+            draw = ImageDraw.Draw(dummy_img)
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            
+            # Create larger canvas for glow effect
+            glow_radius = 8
+            canvas_width = text_width + (glow_radius * 4)
+            canvas_height = text_height + (glow_radius * 4)
+            
+            # Create base image
+            img = Image.new('RGBA', (canvas_width, canvas_height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            
+            text_x = glow_radius * 2
+            text_y = glow_radius * 2
+            
+            # Create glow layers (multiple blurred copies)
+            from PIL import ImageFilter
+            
+            # Create glow base
+            glow_img = Image.new('RGBA', (canvas_width, canvas_height), (0, 0, 0, 0))
+            glow_draw = ImageDraw.Draw(glow_img)
+            
+            # Draw multiple glow layers
+            for i in range(3):
+                offset = i + 1
+                alpha = max(20, 80 - (i * 20))
+                
+                # Draw glow text at slightly different positions
+                for dx in range(-offset, offset + 1):
+                    for dy in range(-offset, offset + 1):
+                        if dx != 0 or dy != 0:
+                            glow_draw.text((text_x + dx, text_y + dy), text, 
+                                         font=font, fill=(255, 255, 255, alpha))
+            
+            # Blur the glow
+            glow_img = glow_img.filter(ImageFilter.GaussianBlur(radius=2))
+            
+            # Composite glow with main image
+            img = Image.alpha_composite(img, glow_img)
+            
+            # Draw main text on top
+            draw = ImageDraw.Draw(img)
+            text_color = (255, 255, 255, 255) if color == 'white' else (255, 255, 255, 255)
+            draw.text((text_x, text_y), text, font=font, fill=text_color)
+            
+            return np.array(img)
+            
+        except Exception as e:
+            print(f"Error creating glow text: {e}")
+            # Fallback to simple text
+            return self._create_text_image(text, fontsize, color)
+
+    def _create_shadow_text(self, text, fontsize, color):
+        """Create text with drop shadow"""
+        try:
+            # Get font
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fontsize)
+            except:
+                font = ImageFont.load_default()
+            
+            # Calculate text size
+            dummy_img = Image.new('RGB', (1, 1))
+            draw = ImageDraw.Draw(dummy_img)
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            
+            # Create canvas with shadow space
+            shadow_offset = 3
+            canvas_width = text_width + shadow_offset + 10
+            canvas_height = text_height + shadow_offset + 10
+            
+            img = Image.new('RGBA', (canvas_width, canvas_height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            
+            text_x = 5
+            text_y = 5
+            
+            # Draw shadow
+            draw.text((text_x + shadow_offset, text_y + shadow_offset), text, 
+                     font=font, fill=(0, 0, 0, 128))
+            
+            # Draw main text
+            text_color = (255, 255, 255, 255) if color == 'white' else (255, 255, 255, 255)
+            draw.text((text_x, text_y), text, font=font, fill=text_color)
+            
+            return np.array(img)
+            
+        except Exception as e:
+            print(f"Error creating shadow text: {e}")
+            return self._create_text_image(text, fontsize, color)
+
+    def _create_gradient_text(self, text, fontsize):
+        """Create text with gradient effect"""
+        try:
+            # Get font
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fontsize)
+            except:
+                font = ImageFont.load_default()
+            
+            # Calculate text size
+            dummy_img = Image.new('RGB', (1, 1))
+            draw = ImageDraw.Draw(dummy_img)
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            
+            canvas_width = text_width + 20
+            canvas_height = text_height + 20
+            
+            # Create gradient background
+            img = Image.new('RGBA', (canvas_width, canvas_height), (0, 0, 0, 0))
+            
+            # Create gradient from cyan to purple (trendy colors)
+            for y in range(canvas_height):
+                ratio = y / canvas_height
+                r = int(100 + (150 * ratio))  # 100 -> 250
+                g = int(200 - (100 * ratio))  # 200 -> 100  
+                b = int(255 - (55 * ratio))   # 255 -> 200
+                
+                for x in range(canvas_width):
+                    img.putpixel((x, y), (r, g, b, 50))
+            
+            # Draw text
+            draw = ImageDraw.Draw(img)
+            draw.text((10, 10), text, font=font, fill=(255, 255, 255, 255))
+            
+            return np.array(img)
+            
+        except Exception as e:
+            print(f"Error creating gradient text: {e}")
+            return self._create_text_image(text, fontsize, 'white')
 
     def process_segment(self, segment_start, segment_end, segment_index, img_timestamps):
         """Process a single segment with continuous motion"""
@@ -997,7 +1162,7 @@ def add_audio_with_ffmpeg(video_path, audio_path, background_music_path, output_
         cmd.extend(['-i', audio_path])
         audio_inputs += 1
         main_audio_index = audio_inputs - 1
-        filter_complex.append(f"[{main_audio_index}:a]volume=1.0[main_audio]")
+        filter_complex.append(f"[{main_audio_index}:a]volume={NARRATION_VOLUME}[main_audio]")
     
     # Add background music if available
     if background_music_path and os.path.exists(background_music_path):
