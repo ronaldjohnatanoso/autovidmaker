@@ -1,5 +1,9 @@
 import os
 os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
+# COMPLETELY DISABLE ImageMagick
+import moviepy.config as config
+config.IMAGEMAGICK_BINARY = None
+
 import sys
 import json
 import argparse
@@ -10,11 +14,12 @@ import subprocess
 import tempfile
 import shutil
 import traceback
-from moviepy.editor import ImageClip, CompositeVideoClip, ColorClip, AudioFileClip, TextClip
+from moviepy.editor import ImageClip, CompositeVideoClip, ColorClip, AudioFileClip
 import numpy as np
 import psutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from tqdm import tqdm  # Add progress bar
+from tqdm import tqdm
+from PIL import Image, ImageDraw, ImageFont
 
 # Constants
 TARGET_WIDTH = 1920
@@ -56,7 +61,7 @@ WATERMARK_COLOR = "white"  # White text color (use color names for better compat
 WATERMARK_BG_COLOR = (0, 0, 0)  # Black background color as RGB tuple
 WATERMARK_FONT = 'Arial-Bold'  # Font for watermark
 WATERMARK_PADDING = 10  # Padding around the text
-WATERMARK_MARGIN = 20  # Distance from bottom-right corner
+WATERMARK_MARGIN = 0  # Distance from bottom-right corner
 
 # Brain rot effect constants
 ENABLE_BREATHING_EFFECT = False  # Disable breathing effect
@@ -78,6 +83,21 @@ ZOOM_PULSE_SPEED = 4.0  #
 ENABLE_GLITCH_EFFECT = False  # Disable glitch
 GLITCH_PROBABILITY = 0.001  # Much lower chance
 GLITCH_INTENSITY = 5  # Reduced intensity
+
+# NEW: Retro TV Effects (optimized)
+ENABLE_TV_EFFECTS = True
+ENABLE_VIGNETTE = True
+VIGNETTE_STRENGTH = 0.6  # 0.0 to 1.0
+ENABLE_SCANLINES = True
+SCANLINE_INTENSITY = 0.3  # 0.0 to 1.0
+SCANLINE_COUNT = 540  # Number of scanlines (half of height for performance)
+ENABLE_TV_STATIC = True
+TV_STATIC_INTENSITY = 0.1  # 0.0 to 1.0
+TV_STATIC_FREQUENCY = 0.02  # How often static appears (0.0 to 1.0)
+ENABLE_RGB_SHIFT = True
+RGB_SHIFT_INTENSITY = 2  # Pixel offset for chromatic aberration
+ENABLE_TV_FLICKER = True
+TV_FLICKER_INTENSITY = 0.05  # Brightness variation
 
 class GlobalMotionState:
     """Manages motion state across the ENTIRE video timeline - shared between all threads"""
@@ -203,6 +223,10 @@ class SegmentProcessor:
         
         # OPTIMIZED: Pre-process subtitles for faster lookups
         self._preprocess_subtitles()
+        
+        # OPTIMIZED: Pre-compute TV effect masks for reuse
+        if ENABLE_TV_EFFECTS:
+            self._precompute_tv_effects()
     
     def _preprocess_subtitles(self):
         """OPTIMIZED: Pre-sort subtitles and create lookup maps"""
@@ -220,6 +244,313 @@ class SegmentProcessor:
                 self.subtitle_lookup[id(sub)] = self.subtitles[i + 1]
             else:
                 self.subtitle_lookup[id(sub)] = None
+
+    def _precompute_tv_effects(self):
+        """Pre-compute TV effect masks for optimal performance"""
+        # Pre-compute vignette mask
+        if ENABLE_VIGNETTE:
+            self.vignette_mask = self._create_vignette_mask()
+        
+        # Pre-compute scanline pattern
+        if ENABLE_SCANLINES:
+            self.scanline_pattern = self._create_scanline_pattern()
+    
+    def _create_vignette_mask(self):
+        """Create optimized vignette mask using NumPy"""
+        y, x = np.ogrid[:TARGET_HEIGHT, :TARGET_WIDTH]
+        center_x, center_y = TARGET_WIDTH // 2, TARGET_HEIGHT // 2
+        
+        # Calculate distance from center (normalized)
+        max_dist = np.sqrt(center_x**2 + center_y**2)
+        dist = np.sqrt((x - center_x)**2 + (y - center_y)**2) / max_dist
+        
+        # Create smooth vignette falloff
+        vignette = 1 - (dist * VIGNETTE_STRENGTH)
+        vignette = np.clip(vignette, 0, 1)
+        
+        # Convert to 3-channel for RGB
+        return np.stack([vignette] * 3, axis=2)
+    
+    def _create_scanline_pattern(self):
+        """Create optimized scanline pattern"""
+        scanlines = np.ones((TARGET_HEIGHT, TARGET_WIDTH, 3), dtype=np.float32)
+        
+        # Create scanline effect (every other line dimmed)
+        step = TARGET_HEIGHT // SCANLINE_COUNT
+        for i in range(0, TARGET_HEIGHT, step * 2):
+            if i < TARGET_HEIGHT:
+                end_line = min(i + step, TARGET_HEIGHT)
+                scanlines[i:end_line] *= (1 - SCANLINE_INTENSITY)
+        
+        return scanlines
+    
+    def _apply_tv_effects(self, frame, t, absolute_time):
+        """Apply optimized TV effects to a frame - FIXED broadcasting"""
+        if not ENABLE_TV_EFFECTS:
+            return frame
+        
+        # Get actual frame dimensions
+        frame_height, frame_width = frame.shape[:2]
+        
+        # Convert to float for processing
+        frame_float = frame.astype(np.float32) / 255.0
+        
+        # Apply vignette (create on-demand for actual frame size)
+        if ENABLE_VIGNETTE:
+            vignette_mask = self._create_vignette_mask_for_size(frame_width, frame_height)
+            frame_float *= vignette_mask
+        
+        # Apply scanlines (create on-demand for actual frame size)
+        if ENABLE_SCANLINES:
+            scanline_pattern = self._create_scanline_pattern_for_size(frame_width, frame_height)
+            frame_float *= scanline_pattern
+        
+        # Apply TV static (optimized noise)
+        if ENABLE_TV_STATIC:
+            # Use time-seeded noise for consistency
+            static_seed = int(absolute_time * 1000) % 10000
+            np.random.seed(static_seed)
+            
+            if np.random.random() < TV_STATIC_FREQUENCY:
+                # Generate noise for actual frame size
+                noise = np.random.random((frame_height, frame_width, 3)) * TV_STATIC_INTENSITY
+                frame_float = np.clip(frame_float + noise, 0, 1)
+        
+        # Apply RGB shift (chromatic aberration)
+        if ENABLE_RGB_SHIFT:
+            shift = int(RGB_SHIFT_INTENSITY)
+            if shift > 0 and shift < frame_width:
+                # Shift red channel right, blue channel left
+                frame_shifted = frame_float.copy()
+                
+                # Red channel shift
+                frame_shifted[:, shift:, 0] = frame_float[:, :-shift, 0]
+                
+                # Blue channel shift  
+                frame_shifted[:, :-shift, 2] = frame_float[:, shift:, 2]
+                
+                frame_float = frame_shifted
+        
+        # Apply TV flicker
+        if ENABLE_TV_FLICKER:
+            # Use sine wave for smooth flicker
+            flicker = 1 + TV_FLICKER_INTENSITY * np.sin(absolute_time * 15)
+            frame_float *= flicker
+        
+        # Convert back to uint8
+        frame_output = np.clip(frame_float * 255, 0, 255).astype(np.uint8)
+        return frame_output
+    
+    def _create_vignette_mask_for_size(self, width, height):
+        """Create vignette mask for specific frame size"""
+        y, x = np.ogrid[:height, :width]
+        center_x, center_y = width // 2, height // 2
+        
+        # Calculate distance from center (normalized)
+        max_dist = np.sqrt(center_x**2 + center_y**2)
+        dist = np.sqrt((x - center_x)**2 + (y - center_y)**2) / max_dist
+        
+        # Create smooth vignette falloff
+        vignette = 1 - (dist * VIGNETTE_STRENGTH)
+        vignette = np.clip(vignette, 0, 1)
+        
+        # Convert to 3-channel for RGB
+        return np.stack([vignette] * 3, axis=2)
+    
+    def _create_scanline_pattern_for_size(self, width, height):
+        """Create scanline pattern for specific frame size"""
+        scanlines = np.ones((height, width, 3), dtype=np.float32)
+        
+        # Create scanline effect (every other line dimmed)
+        step = max(1, height // SCANLINE_COUNT)
+        for i in range(0, height, step * 2):
+            if i < height:
+                end_line = min(i + step, height)
+                scanlines[i:end_line] *= (1 - SCANLINE_INTENSITY)
+        
+        return scanlines
+
+    def _create_text_image(self, text, fontsize, color, stroke_color=None, stroke_width=0, width=None):
+        """Create text image using PIL instead of MoviePy TextClip"""
+        try:
+            # Use default font
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fontsize)
+            except:
+                try:
+                    font = ImageFont.truetype("arial.ttf", fontsize)
+                except:
+                    font = ImageFont.load_default()
+            
+            # Get text dimensions - FIXED to account for descenders
+            dummy_img = Image.new('RGB', (1, 1))
+            draw = ImageDraw.Draw(dummy_img)
+            
+            # Get proper text metrics including ascent and descent
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            
+            # IMPORTANT FIX: Add extra height for descenders and proper vertical spacing
+            extra_height = int(fontsize * 0.3)  # Add 30% extra height for descenders
+            actual_text_height = text_height + extra_height
+            
+            # Add padding for stroke
+            padding = stroke_width * 2 if stroke_width > 0 else 20  # Increased base padding
+            img_width = text_width + padding * 2
+            img_height = actual_text_height + padding * 2
+            
+            # Limit width if specified
+            if width and img_width > width:
+                img_width = width
+            
+            # Create image
+            img = Image.new('RGBA', (img_width, img_height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            
+            # Calculate text position (centered horizontally, with proper vertical spacing)
+            x = (img_width - text_width) // 2
+            y = padding  # Start from padding, not centered vertically
+            
+            # Draw stroke if enabled
+            if stroke_width > 0 and stroke_color:
+                # Convert color string to RGB
+                if isinstance(stroke_color, str):
+                    if stroke_color == 'black':
+                        stroke_rgb = (0, 0, 0)
+                    elif stroke_color == 'white':
+                        stroke_rgb = (255, 255, 255)
+                    else:
+                        stroke_rgb = (0, 0, 0)  # Default to black
+                else:
+                    stroke_rgb = stroke_color
+                
+                # Draw text multiple times for stroke effect
+                for dx in range(-stroke_width, stroke_width + 1):
+                    for dy in range(-stroke_width, stroke_width + 1):
+                        if dx != 0 or dy != 0:
+                            draw.text((x + dx, y + dy), text, font=font, fill=stroke_rgb)
+            
+            # Draw main text
+            if isinstance(color, str):
+                if color == 'white' or color == '#FFFFFF':
+                    text_color = (255, 255, 255)
+                elif color == 'black':
+                    text_color = (0, 0, 0)
+                else:
+                    text_color = (255, 255, 255)  # Default to white
+            else:
+                text_color = color
+            
+            draw.text((x, y), text, font=font, fill=text_color)
+            
+            # Convert PIL image to numpy array
+            img_array = np.array(img)
+            
+            return img_array
+            
+        except Exception as e:
+            print(f"Error creating text image: {e}")
+            # Fallback: create simple colored rectangle with text dimensions
+            fallback_width = len(text) * fontsize // 2
+            fallback_height = int(fontsize * 1.5)  # Increased fallback height
+            fallback_img = np.zeros((fallback_height, fallback_width, 4), dtype=np.uint8)
+            fallback_img[:, :, 3] = 255  # Full alpha
+            return fallback_img
+
+    def _create_segment_subtitle_clip(self, sub, segment_start):
+        """Create subtitle clip using PIL instead of MoviePy TextClip"""
+        try:
+            clip_start = sub['segment_start']
+            clip_end = sub['segment_end']
+            duration = clip_end - clip_start
+            
+            if duration <= 0:
+                return None
+            
+            # Create text image using PIL
+            text_img = self._create_text_image(
+                sub['text'],
+                SUBTITLE_FONTSIZE,
+                SUBTITLE_COLOR,
+                SUBTITLE_STROKE_COLOR,
+                SUBTITLE_STROKE_WIDTH,
+                TARGET_WIDTH
+            )
+            
+            # Convert to ImageClip
+            txt_clip = ImageClip(text_img, duration=duration, transparent=True)
+            txt_clip = txt_clip.set_position(('center', SUBTITLE_POSITION_Y))
+            
+            # SMART SCALE EFFECT - Only for emphasis words
+            if SCALE_EFFECT:
+                should_emphasize = self._should_emphasize_word(sub, segment_start)
+                
+                if should_emphasize:
+                    def optimized_scale_function(t):
+                        if t < SCALE_DURATION:
+                            progress = t / SCALE_DURATION
+                            if progress < 0.6:
+                                scale = 1.0 + (SCALE_FACTOR - 1.0) * (progress / 0.6)
+                            else:
+                                overshoot = 1.3
+                                bounce_progress = (progress - 0.6) / 0.4
+                                scale = SCALE_FACTOR * overshoot - (SCALE_FACTOR * (overshoot - 1.0)) * bounce_progress
+                            return scale
+                        return 1.0
+                    
+                    txt_clip = txt_clip.resize(optimized_scale_function)
+            
+            # Set timing within segment
+            txt_clip = txt_clip.set_start(clip_start).set_end(clip_end)
+            return txt_clip
+            
+        except Exception as e:
+            print(f"Error creating subtitle '{sub['text']}': {e}")
+            return None
+
+    def _create_segment_watermark(self, duration):
+        """Create watermark using PIL instead of MoviePy TextClip"""
+        try:
+            # Create watermark text image
+            watermark_img = self._create_text_image(
+                WATERMARK_TEXT,
+                WATERMARK_FONTSIZE,
+                WATERMARK_COLOR
+            )
+            
+            # Convert to ImageClip
+            txt_clip = ImageClip(watermark_img, duration=duration, transparent=True)
+            
+            # Get dimensions
+            txt_height, txt_width = watermark_img.shape[:2]
+            
+            # Create background
+            bg_width = txt_width + (WATERMARK_PADDING * 2)
+            bg_height = txt_height + (WATERMARK_PADDING * 2)
+            
+            if isinstance(WATERMARK_BG_COLOR, str):
+                if WATERMARK_BG_COLOR.startswith('#'):
+                    hex_color = WATERMARK_BG_COLOR[1:]
+                    bg_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+                else:
+                    bg_color = (0, 0, 0)
+            else:
+                bg_color = WATERMARK_BG_COLOR
+            
+            bg_clip = ColorClip(size=(bg_width, bg_height), color=bg_color, duration=duration)
+            txt_positioned = txt_clip.set_position((WATERMARK_PADDING, WATERMARK_PADDING))
+            
+            watermark_composite = CompositeVideoClip([bg_clip, txt_positioned], size=(bg_width, bg_height))
+            
+            watermark_x = TARGET_WIDTH - bg_width - WATERMARK_MARGIN
+            watermark_y = TARGET_HEIGHT - bg_height - WATERMARK_MARGIN
+            
+            return watermark_composite.set_position((watermark_x, watermark_y))
+            
+        except Exception as e:
+            print(f"Error creating watermark: {e}")
+            return None
 
     def process_segment(self, segment_start, segment_end, segment_index, img_timestamps):
         """Process a single segment with continuous motion"""
@@ -391,6 +722,15 @@ class SegmentProcessor:
                 
                 img_clip = img_clip.rotate(continuous_rotation_func)
             
+            # APPLY TV EFFECTS to the image clip
+            if ENABLE_TV_EFFECTS:
+                def tv_effect_func(get_frame, t):
+                    frame = get_frame(t)
+                    absolute_time = segment_start + clip_start + t
+                    return self._apply_tv_effects(frame, t, absolute_time)
+                
+                img_clip = img_clip.fl(tv_effect_func)
+            
             # Set timing within segment
             final_clip = img_clip.set_start(clip_start).set_end(clip_end)
             
@@ -400,70 +740,6 @@ class SegmentProcessor:
             print(f"Error processing {image_path}: {e}")
             return None
 
-    def _create_segment_subtitle_clip(self, sub, segment_start):
-        """Create subtitle clip for segment with global continuity"""
-        try:
-            clip_start = sub['segment_start']
-            clip_end = sub['segment_end']
-            duration = clip_end - clip_start
-            
-            if duration <= 0:
-                return None
-            
-            # Create base text clip
-            txt_clip = TextClip(
-                sub['text'],
-                fontsize=SUBTITLE_FONTSIZE,
-                color=SUBTITLE_COLOR,
-                font=SUBTITLE_FONT,
-                stroke_color=SUBTITLE_STROKE_COLOR,
-                stroke_width=SUBTITLE_STROKE_WIDTH
-            ).set_duration(duration).set_position(('center', SUBTITLE_POSITION_Y))
-            
-            # SMART SCALE EFFECT - Only for emphasis words
-            if SCALE_EFFECT:
-                # Calculate if this word should be emphasized
-                should_emphasize = self._should_emphasize_word(sub, segment_start)
-                
-                if should_emphasize:
-                    def optimized_scale_function(t):
-                        # Scale effect happens at the beginning of EMPHASIZED subtitles only
-                        if t < SCALE_DURATION:
-                            progress = t / SCALE_DURATION
-                            if progress < 0.6:
-                                scale = 1.0 + (SCALE_FACTOR - 1.0) * (progress / 0.6)
-                            else:
-                                overshoot = 1.3  # MORE overshoot for emphasis
-                                bounce_progress = (progress - 0.6) / 0.4
-                                scale = SCALE_FACTOR * overshoot - (SCALE_FACTOR * (overshoot - 1.0)) * bounce_progress
-                            return scale
-                        return 1.0
-                    
-                    txt_clip = txt_clip.resize(optimized_scale_function)
-            
-            # Apply shake using absolute timeline
-            if ENABLE_SHAKE_EFFECT:
-                def optimized_subtitle_shake(t):
-                    absolute_time = segment_start + clip_start + t
-                    shake_seed = int(absolute_time * SHAKE_FREQUENCY * 1000) % 1000
-                    np.random.seed(shake_seed)
-                    
-                    base_y = SUBTITLE_POSITION_Y
-                    y_shake = np.random.uniform(-SHAKE_INTENSITY/2, SHAKE_INTENSITY/2)
-                    return ('center', base_y + y_shake)
-                
-                txt_clip = txt_clip.set_position(optimized_subtitle_shake)
-            
-            # Set timing within segment
-            txt_clip = txt_clip.set_start(clip_start).set_end(clip_end)
-            return txt_clip
-            
-        except Exception as e:
-            print(f"Error creating subtitle '{sub['text']}': {e}")
-            import traceback
-            traceback.print_exc()
-            return None
-    
     def _should_emphasize_word(self, current_sub, segment_start):
         """OPTIMIZED: Determine emphasis using ONLY timing criteria"""
         current_duration = current_sub['end'] - current_sub['start']
@@ -482,47 +758,6 @@ class SegmentProcessor:
         
         return should_emphasize
 
-    def _create_segment_watermark(self, duration):
-        """Create watermark for segment"""
-        try:
-            txt_clip = TextClip(
-                WATERMARK_TEXT,
-                fontsize=WATERMARK_FONTSIZE,
-                color=WATERMARK_COLOR,
-                font=WATERMARK_FONT
-            ).set_duration(duration)
-            
-            # Get dimensions efficiently
-            test_frame = txt_clip.get_frame(0)
-            txt_height, txt_width = test_frame.shape[:2]
-            
-            # Create background
-            bg_width = txt_width + (WATERMARK_PADDING * 2) + WATERMARK_MARGIN
-            bg_height = txt_height + (WATERMARK_PADDING * 2) + WATERMARK_MARGIN
-            
-            if isinstance(WATERMARK_BG_COLOR, str):
-                if WATERMARK_BG_COLOR.startswith('#'):
-                    hex_color = WATERMARK_BG_COLOR[1:]
-                    bg_color = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-                else:
-                    bg_color = (0, 0, 0)
-            else:
-                bg_color = WATERMARK_BG_COLOR
-            
-            bg_clip = ColorClip(size=(bg_width, bg_height), color=bg_color, duration=duration)
-            txt_positioned = txt_clip.set_position((WATERMARK_PADDING, WATERMARK_PADDING))
-            
-            watermark_composite = CompositeVideoClip([bg_clip, txt_positioned], size=(bg_width, bg_height))
-            
-            watermark_x = TARGET_WIDTH - bg_width
-            watermark_y = TARGET_HEIGHT - bg_height
-            
-            return watermark_composite.set_position((watermark_x, watermark_y))
-            
-        except Exception as e:
-            print(f"Error creating watermark: {e}")
-            return None
-
 def create_threaded_video(project_name, base_dir, upscaled_images_dir, img_timestamps, subtitles):
     """Create video using threaded segment processing with continuous motion"""
     
@@ -537,7 +772,7 @@ def create_threaded_video(project_name, base_dir, upscaled_images_dir, img_times
     segments = []
     num_segments = math.ceil(total_duration / SEGMENT_DURATION)
     
-    for i in range(num_segments):
+    for i in range(num_segments):  # FIXED: Added range()
         segment_start = i * SEGMENT_DURATION
         segment_end = min((i + 1) * SEGMENT_DURATION, total_duration)
         segments.append((segment_start, segment_end, i))
