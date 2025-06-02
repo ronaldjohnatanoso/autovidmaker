@@ -14,6 +14,7 @@ from moviepy.editor import ImageClip, CompositeVideoClip, ColorClip, AudioFileCl
 import numpy as np
 import psutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm  # Add progress bar
 
 # Constants
 TARGET_WIDTH = 1920
@@ -199,7 +200,36 @@ class SegmentProcessor:
         self.base_dir = base_dir
         self.upscaled_images_dir = upscaled_images_dir
         self.subtitles = subtitles
+        
+        # OPTIMIZED: Pre-process subtitles for faster lookups
+        self._preprocess_subtitles()
+        
+        # OPTIMIZED: Pre-compile emphasis words set for O(1) lookup
+        self._emphasis_words = {
+            'wow', 'amazing', 'incredible', 'unbelievable', 'whoa', 'damn', 
+            'shit', 'fuck', 'holy', 'god', 'jesus', 'what', 'why', 'how', 
+            'really', 'seriously', 'literally', 'actually', 'definitely', 
+            'absolutely', 'completely', 'totally', 'perfect', 'insane', 
+            'crazy', 'wild', 'epic', 'legendary'
+        }
     
+    def _preprocess_subtitles(self):
+        """OPTIMIZED: Pre-sort subtitles and create lookup maps"""
+        if not self.subtitles:
+            self.subtitle_lookup = {}
+            return
+            
+        # Sort subtitles by start time for binary search
+        self.subtitles.sort(key=lambda x: x['start'])
+        
+        # Create lookup map: subtitle -> next subtitle
+        self.subtitle_lookup = {}
+        for i, sub in enumerate(self.subtitles):
+            if i + 1 < len(self.subtitles):
+                self.subtitle_lookup[id(sub)] = self.subtitles[i + 1]
+            else:
+                self.subtitle_lookup[id(sub)] = None
+
     def process_segment(self, segment_start, segment_end, segment_index, img_timestamps):
         """Process a single segment with continuous motion"""
         print(f"Processing segment {segment_index}: {segment_start:.2f}s - {segment_end:.2f}s")
@@ -207,80 +237,85 @@ class SegmentProcessor:
         segment_duration = segment_end - segment_start
         all_clips = []
         
-        # Filter images for this segment
-        segment_images = []
-        for entry in img_timestamps:
-            img_start = float(entry['start'])
-            img_end = float(entry['end_adjusted'])
-            
-            # Check if image overlaps with this segment
-            if img_start < segment_end and img_end > segment_start:
-                # Adjust timing relative to segment
-                adjusted_entry = entry.copy()
-                adjusted_entry['segment_start'] = max(0, img_start - segment_start)
-                adjusted_entry['segment_end'] = min(segment_duration, img_end - segment_start)
-                adjusted_entry['absolute_start'] = img_start
-                segment_images.append(adjusted_entry)
-        
-        # Create image clips for this segment
-        for entry in segment_images:
-            clip = self._create_segment_image_clip(entry, segment_start, segment_duration)
-            if clip:
-                all_clips.append(clip)
-        
-        # Filter subtitles for this segment
-        segment_subtitles = []
-        for sub in self.subtitles:
-            if sub['start'] < segment_end and sub['end'] > segment_start:
-                adjusted_sub = sub.copy()
-                adjusted_sub['segment_start'] = max(0, sub['start'] - segment_start)
-                adjusted_sub['segment_end'] = min(segment_duration, sub['end'] - segment_start)
-                adjusted_sub['absolute_start'] = sub['start']
-                segment_subtitles.append(adjusted_sub)
-        
-        # Create subtitle clips for this segment
-        for sub in segment_subtitles:
-            clip = self._create_segment_subtitle_clip(sub, segment_start)
-            if clip:
-                all_clips.append(clip)
-        
-        # Create watermark for this segment
-        watermark_clip = self._create_segment_watermark(segment_duration)
-        if watermark_clip:
-            all_clips.append(watermark_clip)
-        
-        # Compose segment video
-        if not all_clips:
-            # Create black segment if no content
-            bg = ColorClip(size=(TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0), duration=segment_duration)
-            segment_video = bg
-        else:
-            # Create black background first, then add all clips on top
-            bg = ColorClip(size=(TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0), duration=segment_duration)
-            all_clips.insert(0, bg)  # Add background as first layer
-            segment_video = CompositeVideoClip(all_clips, size=(TARGET_WIDTH, TARGET_HEIGHT))
-            segment_video = segment_video.set_duration(segment_duration)
-        
-        # Render segment to file
-        temp_dir = tempfile.mkdtemp()
-        segment_path = os.path.join(temp_dir, f"segment_{segment_index:04d}.mp4")
-        
         try:
+            # Filter images for this segment
+            segment_images = []
+            for entry in img_timestamps:
+                img_start = float(entry['start'])
+                img_end = float(entry['end_adjusted'])
+                
+                # Check if image overlaps with this segment
+                if img_start < segment_end and img_end > segment_start:
+                    # Adjust timing relative to segment
+                    adjusted_entry = entry.copy()
+                    adjusted_entry['segment_start'] = max(0, img_start - segment_start)
+                    adjusted_entry['segment_end'] = min(segment_duration, img_end - segment_start)
+                    adjusted_entry['absolute_start'] = img_start
+                    segment_images.append(adjusted_entry)
+            
+            # Create image clips for this segment
+            for i, entry in enumerate(segment_images):
+                clip = self._create_segment_image_clip(entry, segment_start, segment_duration)
+                if clip:
+                    all_clips.append(clip)
+            
+            # Filter subtitles for this segment
+            segment_subtitles = []
+            for sub in self.subtitles:
+                if sub['start'] < segment_end and sub['end'] > segment_start:
+                    adjusted_sub = sub.copy()
+                    adjusted_sub['segment_start'] = max(0, sub['start'] - segment_start)
+                    adjusted_sub['segment_end'] = min(segment_duration, sub['end'] - segment_start)
+                    adjusted_sub['absolute_start'] = sub['start']
+                    segment_subtitles.append(adjusted_sub)
+            
+            # Create subtitle clips for this segment
+            for i, sub in enumerate(segment_subtitles):
+                clip = self._create_segment_subtitle_clip(sub, segment_start)
+                if clip:
+                    all_clips.append(clip)
+            
+            # Create watermark for this segment
+            watermark_clip = self._create_segment_watermark(segment_duration)
+            if watermark_clip:
+                all_clips.append(watermark_clip)
+            
+            # Compose segment video
+            if not all_clips:
+                # Create black segment if no content
+                bg = ColorClip(size=(TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0), duration=segment_duration)
+                segment_video = bg
+            else:
+                # Create black background first, then add all clips on top
+                bg = ColorClip(size=(TARGET_WIDTH, TARGET_HEIGHT), color=(0, 0, 0), duration=segment_duration)
+                all_clips.insert(0, bg)  # Add background as first layer
+                segment_video = CompositeVideoClip(all_clips, size=(TARGET_WIDTH, TARGET_HEIGHT))
+                segment_video = segment_video.set_duration(segment_duration)
+            
+            # Render segment to file with REAL MoviePy progress
+            temp_dir = tempfile.mkdtemp()
+            segment_path = os.path.join(temp_dir, f"segment_{segment_index:04d}.mp4")
+            
+            print(f"Rendering segment {segment_index} to file...")
+            
+            # Use MoviePy's built-in progress display
             segment_video.write_videofile(
                 segment_path,
                 fps=FPS,
                 codec='libx264',
                 audio=False,
                 ffmpeg_params=['-preset', 'ultrafast', '-crf', '18'],
-                verbose=False,
-                logger=None
+                verbose=True,  # Enable MoviePy's own progress
+                logger='bar'   # Use MoviePy's progress bar
             )
+            
             print(f"Segment {segment_index} rendered: {segment_path}")
             return segment_path, segment_index
+            
         except Exception as e:
             print(f"Error rendering segment {segment_index}: {e}")
             return None, segment_index
-    
+
     def _resize_clip_optimized(self, img_clip):
         """FIXED resize - PROPERLY fill entire screen with no gaps"""
         original_width = img_clip.w
@@ -439,57 +474,56 @@ class SegmentProcessor:
             return None
     
     def _should_emphasize_word(self, current_sub, segment_start):
-        """Determine if a word should be emphasized based on timing gaps"""
+        """OPTIMIZED: Determine emphasis using pre-computed lookups"""
         current_duration = current_sub['end'] - current_sub['start']
         
-        # Find the next subtitle
-        next_sub = None
-        min_start_time = float('inf')
-        
-        for sub in self.subtitles:
-            if sub['start'] > current_sub['end'] and sub['start'] < min_start_time:
-                min_start_time = sub['start']
-                next_sub = sub
+        # OPTIMIZED: O(1) lookup for next subtitle
+        next_sub = self.subtitle_lookup.get(id(current_sub))
         
         # Calculate gap to next word
-        if next_sub:
-            gap_to_next = next_sub['start'] - current_sub['end']
-        else:
-            gap_to_next = 0.0
+        gap_to_next = next_sub['start'] - current_sub['end'] if next_sub else 0.0
         
-        # Emphasis criteria:
-        # 1. Gap to next word is longer than 0.3 seconds (dramatic pause)
-        # 2. Word duration is longer than 0.4 seconds (slow/emphasized speech)
-        # 3. Word contains emphasis indicators (caps, punctuation)
-        
+        # OPTIMIZED: Simple boolean checks (no list iterations)
         has_dramatic_pause = gap_to_next > 0.3
         has_long_duration = current_duration > 0.4
-        has_emphasis_text = self._has_text_emphasis(current_sub['text'])
+        has_emphasis_text = self._has_text_emphasis_fast(current_sub['text'])
         
-        # Emphasize if any criteria is met
         should_emphasize = has_dramatic_pause or has_long_duration or has_emphasis_text
-        
-        # if should_emphasize:
-        #     print(f"Emphasizing word '{current_sub['text']}' - pause: {gap_to_next:.2f}s, duration: {current_duration:.2f}s, text_emphasis: {has_emphasis_text}")
         
         return should_emphasize
     
-    def _has_text_emphasis(self, text):
-        """Check if text has emphasis indicators"""
+    def _has_text_emphasis_fast(self, text):
+        """OPTIMIZED: Fast text emphasis check with early returns"""
         text = text.strip()
         
-        # Check for emphasis indicators
-        emphasis_indicators = [
-            text.isupper() and len(text) > 1,  # ALL CAPS words
-            text.endswith('!'),                # Exclamation
-            text.endswith('?'),                # Question
-            text.endswith('...'),              # Ellipsis
-            text.startswith('*') or text.endswith('*'),  # Asterisk emphasis
-            len(text) > 8,                     # Long words tend to be important
-            text.lower() in ['wow', 'amazing', 'incredible', 'unbelievable', 'whoa', 'damn', 'shit', 'fuck', 'holy', 'god', 'jesus', 'what', 'why', 'how', 'really', 'seriously', 'literally', 'actually', 'definitely', 'absolutely', 'completely', 'totally', 'perfect', 'insane', 'crazy', 'wild', 'epic', 'legendary']  # Emphasis words
-        ]
+        # OPTIMIZED: Early returns for fastest checks first
+        if len(text) <= 1:
+            return False
+            
+        # Check punctuation (fastest)
+        if text[-1] in '!?':
+            return True
+            
+        if text.endswith('...'):
+            return True
+            
+        # Check caps (fast)
+        if text.isupper():
+            return True
+            
+        # Check asterisks (fast)
+        if text.startswith('*') and text.endswith('*'):
+            return True
+            
+        # Check length (fast)
+        if len(text) > 8:
+            return True
+            
+        # OPTIMIZED: O(1) set lookup instead of O(n) list search
+        if text.lower() in self._emphasis_words:
+            return True
         
-        return any(emphasis_indicators)
+        return False
 
     def _create_segment_watermark(self, duration):
         """Create watermark for segment"""
@@ -539,6 +573,7 @@ def create_threaded_video(project_name, base_dir, upscaled_images_dir, img_times
     total_duration = max(float(entry['end_adjusted']) for entry in img_timestamps)
     
     # Initialize global motion state
+    print("Initializing motion state...")
     global_motion_state = GlobalMotionState(img_timestamps, total_duration)
     
     # Calculate segments
@@ -556,20 +591,27 @@ def create_threaded_video(project_name, base_dir, upscaled_images_dir, img_times
     segment_files = []
     processor = SegmentProcessor(global_motion_state, project_name, base_dir, upscaled_images_dir, subtitles)
     
+    # Simple counter for completed segments
+    completed_count = 0
+    
     with ThreadPoolExecutor(max_workers=min(len(segments), psutil.cpu_count())) as executor:
-        futures = []
+        # FIXED: Store future to segment mapping correctly
+        future_to_segment = {}
         for segment_start, segment_end, segment_index in segments:
             future = executor.submit(
                 processor.process_segment, 
                 segment_start, segment_end, segment_index, img_timestamps
             )
-            futures.append(future)
+            future_to_segment[future] = segment_index
         
-        # Collect results
-        for future in as_completed(futures):
-            segment_path, segment_index = future.result()
+        # FIXED: Collect results properly
+        for future in as_completed(future_to_segment.keys()):
+            segment_path, returned_index = future.result()
             if segment_path:
-                segment_files.append((segment_index, segment_path))
+                segment_files.append((returned_index, segment_path))
+            
+            completed_count += 1
+            print(f"\n=== Completed {completed_count}/{len(segments)} segments ===\n")
     
     # Sort segments by index
     segment_files.sort(key=lambda x: x[0])
@@ -600,12 +642,15 @@ def create_threaded_video(project_name, base_dir, upscaled_images_dir, img_times
         output_path
     ]
     
+    print("Running FFmpeg concatenation...")
     result = subprocess.run(cmd, capture_output=True, text=True)
     
     # Cleanup temp files
+    print("Cleaning up temporary files...")
     for _, segment_path in segment_files:
         if os.path.exists(segment_path):
             os.unlink(segment_path)
+    
     shutil.rmtree(temp_dir)
     
     if result.returncode != 0:
@@ -640,16 +685,19 @@ def main():
         print(f"Image timestamps file '{img_timestamps_file_path}' does not exist.")
         sys.exit(1)
 
-    # Load data
+    # Load data with progress
+    print("Loading image timestamps...")
     with open(img_timestamps_file_path, 'r') as f:
         img_timestamps = json.load(f)
+    print(f"Loaded {len(img_timestamps)} image entries")
 
     # Load subtitles
     srt_path = os.path.join(base_dir, f"{project_name}_wordlevel.srt")
     subtitles = []
     if os.path.exists(srt_path):
-        print(f"Loading subtitles from {srt_path}")
-        subtitles = parse_srt(srt_path)
+        subtitles = parse_srt(srt_path)  # Now has built-in progress bar
+    else:
+        print("No subtitle file found")
 
     if args.render:
         print("Creating threaded video with continuous motion...")
@@ -698,39 +746,47 @@ def main():
             subprocess.run(['ffplay', '-autoexit', preview_path])
 
 def parse_srt(srt_path):
-    """Parse SRT file and return list of subtitle entries"""
+    """OPTIMIZED: Parse SRT file with regex and progress bar"""
+    import re
+    
     subtitles = []
     
+    print(f"Loading subtitles from {srt_path}...")
     with open(srt_path, 'r', encoding='utf-8') as f:
         content = f.read().strip()
     
+    # OPTIMIZED: Use regex for faster timestamp parsing
+    pattern = re.compile(
+        r'(\d{2}):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})[,.](\d{3})'
+    )
+    
     blocks = content.split('\n\n')
     
-    for block in blocks:
+    # Parse with progress bar
+    parse_progress = tqdm(blocks, desc="Parsing subtitles", unit="subtitle")
+    
+    for block in parse_progress:
         lines = block.strip().split('\n')
         if len(lines) >= 3:
-            # Parse timestamp line (format: 00:00:00,000 --> 00:00:00,000)
-            timestamp_line = lines[1]
-            start_str, end_str = timestamp_line.split(' --> ')
-            
-            # Convert timestamp to seconds
-            def time_to_seconds(time_str):
-                time_str = time_str.replace(',', '.')
-                parts = time_str.split(':')
-                return float(parts[0]) * 3600 + float(parts[1]) * 60 + float(parts[2])
-            
-            start_time = time_to_seconds(start_str)
-            end_time = time_to_seconds(end_str)
-            
-            # Join text lines (in case subtitle spans multiple lines)
-            text = ' '.join(lines[2:])
-            
-            subtitles.append({
-                'start': start_time,
-                'end': end_time,
-                'text': text
-            })
+            # OPTIMIZED: Regex parsing instead of string splits
+            match = pattern.search(lines[1])
+            if match:
+                h1, m1, s1, ms1, h2, m2, s2, ms2 = map(int, match.groups())
+                
+                # OPTIMIZED: Direct calculation instead of function calls
+                start_time = h1 * 3600 + m1 * 60 + s1 + ms1 / 1000.0
+                end_time = h2 * 3600 + m2 * 60 + s2 + ms2 / 1000.0
+                
+                text = ' '.join(lines[2:])
+                
+                subtitles.append({
+                    'start': start_time,
+                    'end': end_time,
+                    'text': text
+                })
     
+    parse_progress.close()
+    print(f"Loaded {len(subtitles)} subtitles")
     return subtitles
 
 def add_audio_with_ffmpeg(video_path, audio_path, background_music_path, output_path):
@@ -784,6 +840,9 @@ def add_audio_with_ffmpeg(video_path, audio_path, background_music_path, output_
     ])
     
     print(f"Adding audio to video...")
+    
+    # Create a simple progress indicator for FFmpeg
+    print("Running FFmpeg audio processing...")
     result = subprocess.run(cmd, capture_output=True, text=True)
     
     if result.returncode != 0:
