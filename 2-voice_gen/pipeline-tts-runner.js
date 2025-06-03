@@ -58,13 +58,13 @@ function delay(ms) {
 
   const estimatedMilliseconds = config["stages"]["voice_gen"]["estimated_duration_ms"];
 
-
   // Get voice effect from config
   const VOICE_EFFECT = config["stages"]["voice_gen"]["voice_effect"] || "none";
 
-
   // Output audio path: ../0-project-files/<projectName>/<projectName>.wav
   const outputAudioPath = path.join(projectFolder, `${projectName}.wav`);
+
+  const totalTimeout = estimatedMilliseconds + TIME_OFFSET;
 
   // Kill previous Chrome processes on debugging port
   runShellScriptSync(killChromeScript, "kill-chrome-debug.sh");
@@ -86,6 +86,7 @@ function delay(ms) {
   const browser = await puppeteer.connect({
     browserURL: "http://localhost:9222",
     defaultViewport: null,
+    protocolTimeout: totalTimeout + 30000, // Add extra 30 seconds buffer to total timeout
   });
 
   const pages = await browser.pages();
@@ -174,15 +175,28 @@ function delay(ms) {
   await page.click("div.speech-prompt-footer button > span");
   console.log("Running TTS generation");
 
+  console.log("estimtedMilliseconds:", estimatedMilliseconds);
+  console.log("TIME_OFFSET:", TIME_OFFSET);
+
+  console.log(`⏳ Waiting for audio element to appear (timeout: ${totalTimeout} ms)`);
+
+  const ttsstarted = Date.now();
   //POSSIBLE PROBLEM
   try {
     // await page.waitForNetworkIdle({
     //   timeout: estimatedMilliseconds + 5000, // Wait for estimated duration + 10 seconds
     //   idleTime: 5000, // Wait for 5 seconds of network idle
     // })
-    await page.waitForSelector("audio", { visible: true, timeout: estimatedMilliseconds + TIME_OFFSET });
+    await page.waitForSelector("audio", { visible: true, timeout: totalTimeout });
     console.log("🔊 Audio element found!");
   } catch (error) {
+    const ttsDuration = Date.now() - ttsstarted;
+    console.log("Duration of TTS generation (ms):", ttsDuration, "ms");
+    //in minutes and seconds
+    const minutes = Math.floor(ttsDuration / 60000);
+    const seconds = Math.floor((ttsDuration % 60000) / 1000);
+    console.log("Duration of TTS generation (min, sec):", minutes, "min", seconds, "sec");
+
     console.error("❌ Error while waiting for audio element:", error);
     //save screenshot to the project folder
     console.log("📸 Saving error screenshot...");

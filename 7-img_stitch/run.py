@@ -25,7 +25,7 @@ from PIL import Image, ImageDraw, ImageFont
 TARGET_WIDTH = 1920
 TARGET_HEIGHT = 1080
 FPS = 24
-SEGMENT_DURATION = 20  # seconds per segment
+SEGMENT_DURATION = 15  # seconds per segment
 
 # Subtitle styling constants (updated for brain rot)
 SUBTITLE_FONTSIZE = 100  # Bigger text
@@ -45,26 +45,31 @@ SCALE_DURATION = 0.3  # Faster animation
 
 # Motion effect constants
 ENABLE_IMAGE_MOTION = True
-MOTION_TYPE = 'ken_burns'  # Options: 'ken_burns', 'parallax', 'zoom_pan', 'drift'
+MOTION_TYPE = 'ken_burns'  # Options: '30ken_burns', 'parallax', 'zoom_pan', 'drift'
 MOTION_INTENSITY = 0.2  # How much movement (0.0 to 0.5)
 ZOOM_RANGE = (1.0, 1.2)  # Min and max zoom levels
 PAN_SPEED = 0.05  # How fast to pan across the image
 
 # Background music constants
-BACKGROUND_MUSIC_FILE = "motivation.mp3"  # Name of the background music file
-BACKGROUND_MUSIC_VOLUME = 0.4  # Volume level for background music (0.0 to 1.0)
+BACKGROUND_MUSIC_FILE = "inspirational.mp3"  # Name of the background music file
+BACKGROUND_MUSIC_VOLUME = 0.5  # Volume level for background music (0.0 to 1.0)
 
 # Narration audio constants
-NARRATION_VOLUME = 1.5  # Volume level for narration audio (1.0 = normal, 1.5 = 50% louder, 2.0 = double volume)
+NARRATION_VOLUME = 2  # Volume level for narration audio (1.0 = normal, 1.5 = 50% louder, 2.0 = double volume)
 
 # Watermark constants
-WATERMARK_TEXT = "@unhingedWizard"  # The watermark text to display
+WATERMARK_TEXT = ""  # The watermark text to display
 WATERMARK_FONT = 'Arial-Bold'  # Font for watermark
 WATERMARK_FONTSIZE = 24  # Font size for watermark
+WATERMARK_HEIGHT = 50  # Fixed height for watermark (None = auto from fontsize)
+WATERMARK_MAX_WIDTH = 300  # Maximum width for watermark (prevents too wide)
+WATERMARK_SCALE = 1.0  # Overall scale multiplier (1.0 = normal, 1.5 = 150% size)
 WATERMARK_COLOR = 'white'  # Watermark text color
-WATERMARK_OPACITY = 0.7  # Overall watermark opacity (0.0 to 1.0)
-WATERMARK_STYLE = 'glow'  # Options: 'glow', 'shadow', 'outline', 'gradient', 'minimal'
-WATERMARK_MARGIN = 20  # Distance from bottom-right corner
+WATERMARK_OPACITY = 0.8  # Overall watermark opacity (0.0 to 1.0)
+WATERMARK_STYLE = 'minimal'  # Options: 'glow', 'shadow', 'outline', 'gradient', 'minimal'
+WATERMARK_MARGIN = 0  # Distance from bottom-right corner (now actually works)
+WATERMARK_BG_STYLE = 'transparent'  # Options: 'black', 'dark_gray', 'transparent', 'custom'
+WATERMARK_BG_COLOR = (0, 0, 0)  # Custom RGB color for background (if using 'custom')
 
 # Brain rot effect constants
 ENABLE_BREATHING_EFFECT = False  # Disable breathing effect
@@ -92,15 +97,23 @@ ENABLE_TV_EFFECTS = True
 ENABLE_VIGNETTE = True
 VIGNETTE_STRENGTH = 0.6  # 0.0 to 1.0
 ENABLE_SCANLINES = True
-SCANLINE_INTENSITY = 0.6  # 0.0 to 1.0
+SCANLINE_INTENSITY = 0.8  # 0.0 to 1.0
 SCANLINE_COUNT = 540  # Number of scanlines (half of height for performance)
 ENABLE_TV_STATIC = True
 TV_STATIC_INTENSITY = 0.3  # 0.0 to 1.0
 TV_STATIC_FREQUENCY = 0.02  # How often static appears (0.0 to 1.0)
 ENABLE_RGB_SHIFT = True
 RGB_SHIFT_INTENSITY = 2  # Pixel offset for chromatic aberration
-ENABLE_TV_FLICKER = True
-TV_FLICKER_INTENSITY = 0.05  # Brightness variation
+ENABLE_TV_FLICKER = False
+TV_FLICKER_INTENSITY = 0.000001  # Brightness variation
+
+# Corner cover constants
+ENABLE_CORNER_COVER = True  # Enable corner cover to hide other watermarks
+CORNER_COVER_TYPE = 'semi_circle'  # Options: 'semi_circle', 'rectangle' 
+CORNER_COVER_SIZE = 0.20  # Size as fraction of image (0.15 = 15% of image size for radius)
+CORNER_COVER_DARKNESS = 0.0  # How dark to make it (0.0 = pure black, 1.0 = no change)
+CORNER_COVER_OFFSET_X = 85  # Pixels to move circle center left from right edge (positive = left)
+CORNER_COVER_OFFSET_Y = 20  # Pixels to move circle center up from bottom edge (positive = up)
 
 class GlobalMotionState:
     """Manages motion state across the ENTIRE video timeline - shared between all threads"""
@@ -461,6 +474,489 @@ class SegmentProcessor:
             fallback_img[:, :, 3] = 255  # Full alpha
             return fallback_img
 
+    def _create_text_with_blur_bg(self, text, fontsize, color, stroke_color=None, stroke_width=0):
+        """Create text with configurable background and size control"""
+        try:
+            # Calculate effective font size based on scale
+            effective_fontsize = int(fontsize * WATERMARK_SCALE)
+            
+            # Get font
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", effective_fontsize)
+            except:
+                font = ImageFont.load_default()
+            
+            # Calculate text size
+            dummy_img = Image.new('RGB', (1, 1))
+            draw = ImageDraw.Draw(dummy_img)
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            
+            # Apply height constraint if specified
+            if WATERMARK_HEIGHT is not None:
+                # Calculate scale to achieve target height
+                height_scale = WATERMARK_HEIGHT / text_height
+                effective_fontsize = int(effective_fontsize * height_scale)
+                
+                # Recreate font with adjusted size
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", effective_fontsize)
+                except:
+                    font = ImageFont.load_default()
+                
+                # Recalculate dimensions
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+            
+            # Apply width constraint if specified
+            if WATERMARK_MAX_WIDTH is not None and text_width > WATERMARK_MAX_WIDTH:
+                # Calculate scale to fit within max width
+                width_scale = WATERMARK_MAX_WIDTH / text_width
+                effective_fontsize = int(effective_fontsize * width_scale)
+                
+                # Recreate font with adjusted size
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", effective_fontsize)
+                except:
+                    font = ImageFont.load_default()
+                
+                # Recalculate dimensions
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+            
+            # Minimal padding for tight fit
+            padding = max(6, int(8 * WATERMARK_SCALE))  # Scale padding too
+            
+            canvas_width = text_width + padding * 2
+            canvas_height = text_height + padding * 2
+            
+            # Create image
+            img = Image.new('RGBA', (canvas_width, canvas_height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            
+            # Choose background based on style
+            radius = max(4, int(6 * WATERMARK_SCALE))  # Scale radius
+            
+            if WATERMARK_BG_STYLE == 'transparent':
+                # No background - just text
+                pass
+            elif WATERMARK_BG_STYLE == 'black':
+                # Pure black background
+                draw.rounded_rectangle(
+                    [0, 0, canvas_width, canvas_height],
+                    radius=radius,
+                    fill=(0, 0, 0, 255)  # Pure black
+                )
+            elif WATERMARK_BG_STYLE == 'dark_gray':
+                # Dark gray background
+                draw.rounded_rectangle(
+                    [0, 0, canvas_width, canvas_height],
+                    radius=radius,
+                    fill=(40, 40, 40, 255)  # Dark gray
+                )
+            elif WATERMARK_BG_STYLE == 'custom':
+                # Custom color background
+                r, g, b = WATERMARK_BG_COLOR
+                draw.rounded_rectangle(
+                    [0, 0, canvas_width, canvas_height],
+                    radius=radius,
+                    fill=(r, g, b, 255)  # Custom color
+                )
+            
+            # Calculate text position (centered)
+            text_x = padding
+            text_y = padding
+            
+            # Draw stroke if enabled
+            if stroke_width > 0 and stroke_color:
+                scaled_stroke_width = max(1, int(stroke_width * WATERMARK_SCALE))
+                stroke_rgb = (0, 0, 0) if stroke_color == 'black' else (255, 255, 255)
+                
+                for dx in range(-scaled_stroke_width, scaled_stroke_width + 1):
+                    for dy in range(-scaled_stroke_width, scaled_stroke_width + 1):
+                        if dx != 0 or dy != 0:
+                            draw.text((text_x + dx, text_y + dy), text, font=font, fill=stroke_rgb)
+            
+            # Draw main text
+            text_color = (255, 255, 255) if color == 'white' else (255, 255, 255)
+            draw.text((text_x, text_y), text, font=font, fill=text_color)
+            
+            return np.array(img)
+            
+        except Exception as e:
+            print(f"Error creating text with background: {e}")
+            return self._create_text_image(text, fontsize, color, stroke_color, stroke_width)
+
+    def _create_glow_text_with_blur(self, text, fontsize, color):
+        """Create glowing text with configurable background and size control"""
+        try:
+            # Calculate effective font size based on scale
+            effective_fontsize = int(fontsize * WATERMARK_SCALE)
+            
+            # Get font
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", effective_fontsize)
+            except:
+                font = ImageFont.load_default()
+            
+            # Calculate text size
+            dummy_img = Image.new('RGB', (1, 1))
+            draw = ImageDraw.Draw(dummy_img)
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            
+            # Apply height constraint if specified
+            if WATERMARK_HEIGHT is not None:
+                height_scale = WATERMARK_HEIGHT / text_height
+                effective_fontsize = int(effective_fontsize * height_scale)
+                
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", effective_fontsize)
+                except:
+                    font = ImageFont.load_default()
+                
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+            
+            # Apply width constraint if specified
+            if WATERMARK_MAX_WIDTH is not None and text_width > WATERMARK_MAX_WIDTH:
+                width_scale = WATERMARK_MAX_WIDTH / text_width
+                effective_fontsize = int(effective_fontsize * width_scale)
+                
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", effective_fontsize)
+                except:
+                    font = ImageFont.load_default()
+                
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+            
+            # Account for glow effect
+            glow_radius = max(6, int(8 * WATERMARK_SCALE))
+            padding = max(4, int(6 * WATERMARK_SCALE))
+            canvas_width = text_width + (glow_radius + padding) * 2
+            canvas_height = text_height + (glow_radius + padding) * 2
+            
+            # Create base image
+            img = Image.new('RGBA', (canvas_width, canvas_height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            
+            # Choose background based on style
+            radius = max(6, int(8 * WATERMARK_SCALE))
+            
+            if WATERMARK_BG_STYLE == 'transparent':
+                # No background
+                pass
+            elif WATERMARK_BG_STYLE == 'black':
+                draw.rounded_rectangle(
+                    [0, 0, canvas_width, canvas_height],
+                    radius=radius,
+                    fill=(0, 0, 0, 255)  # Pure black
+                )
+            elif WATERMARK_BG_STYLE == 'dark_gray':
+                draw.rounded_rectangle(
+                    [0, 0, canvas_width, canvas_height],
+                    radius=radius,
+                    fill=(40, 40, 40, 255)  # Dark gray
+                )
+            elif WATERMARK_BG_STYLE == 'custom':
+                r, g, b = WATERMARK_BG_COLOR
+                draw.rounded_rectangle(
+                    [0, 0, canvas_width, canvas_height],
+                    radius=radius,
+                    fill=(r, g, b, 255)  # Custom color
+                )
+            
+            text_x = glow_radius + padding
+            text_y = glow_radius + padding
+            
+            # Create glow layers
+            from PIL import ImageFilter
+            glow_img = Image.new('RGBA', (canvas_width, canvas_height), (0, 0, 0, 0))
+            glow_draw = ImageDraw.Draw(glow_img)
+            
+            # Draw glow
+            glow_layers = max(2, int(3 * WATERMARK_SCALE))
+            for i in range(glow_layers):
+                offset = i + 1
+                alpha = max(30, 100 - (i * 25))
+                
+                for dx in range(-offset, offset + 1):
+                    for dy in range(-offset, offset + 1):
+                        if dx != 0 or dy != 0:
+                            glow_draw.text((text_x + dx, text_y + dy), text, 
+                                         font=font, fill=(255, 255, 255, alpha))
+            
+            # Blur the glow
+            blur_radius = max(2, int(3 * WATERMARK_SCALE))
+            glow_img = glow_img.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+            
+            # Composite glow with main image
+            img = Image.alpha_composite(img, glow_img)
+            
+            # Draw main text on top
+            draw = ImageDraw.Draw(img)
+            draw.text((text_x, text_y), text, font=font, fill=(255, 255, 255, 255))
+            
+            return np.array(img)
+            
+        except Exception as e:
+            print(f"Error creating glow text: {e}")
+            return self._create_glow_text(text, fontsize, color)
+
+    def _create_shadow_text_with_blur(self, text, fontsize, color):
+        """Create shadow text with configurable background and size control"""
+        try:
+            # Calculate effective font size based on scale
+            effective_fontsize = int(fontsize * WATERMARK_SCALE)
+            
+            # Get font
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", effective_fontsize)
+            except:
+                font = ImageFont.load_default()
+            
+            # Calculate text size
+            dummy_img = Image.new('RGB', (1, 1))
+            draw = ImageDraw.Draw(dummy_img)
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            
+            # Apply height constraint if specified
+            if WATERMARK_HEIGHT is not None:
+                height_scale = WATERMARK_HEIGHT / text_height
+                effective_fontsize = int(effective_fontsize * height_scale)
+                
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", effective_fontsize)
+                except:
+                    font = ImageFont.load_default()
+                
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+            
+            # Apply width constraint if specified
+            if WATERMARK_MAX_WIDTH is not None and text_width > WATERMARK_MAX_WIDTH:
+                width_scale = WATERMARK_MAX_WIDTH / text_width
+                effective_fontsize = int(effective_fontsize * width_scale)
+                
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", effective_fontsize)
+                except:
+                    font = ImageFont.load_default()
+                
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+            
+            # Account for shadow
+            shadow_offset = max(2, int(3 * WATERMARK_SCALE))
+            padding = max(4, int(6 * WATERMARK_SCALE))
+            canvas_width = text_width + shadow_offset + padding * 2
+            canvas_height = text_height + shadow_offset + padding * 2
+            
+            img = Image.new('RGBA', (canvas_width, canvas_height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            
+            # Choose background based on style
+            radius = max(4, int(6 * WATERMARK_SCALE))
+            
+            if WATERMARK_BG_STYLE == 'transparent':
+                # No background
+                pass
+            elif WATERMARK_BG_STYLE == 'black':
+                draw.rounded_rectangle(
+                    [0, 0, canvas_width, canvas_height],
+                    radius=radius,
+                    fill=(0, 0, 0, 255)  # Pure black
+                )
+            elif WATERMARK_BG_STYLE == 'dark_gray':
+                draw.rounded_rectangle(
+                    [0, 0, canvas_width, canvas_height],
+                    radius=radius,
+                    fill=(40, 40, 40, 255)  # Dark gray
+                )
+            elif WATERMARK_BG_STYLE == 'custom':
+                r, g, b = WATERMARK_BG_COLOR
+                draw.rounded_rectangle(
+                    [0, 0, canvas_width, canvas_height],
+                    radius=radius,
+                    fill=(r, g, b, 255)  # Custom color
+                )
+            
+            text_x = padding
+            text_y = padding
+            
+            # Draw shadow
+            draw.text((text_x + shadow_offset, text_y + shadow_offset), text, 
+                     font=font, fill=(0, 0, 0, 180))  # Semi-transparent black shadow
+            
+            # Draw main text
+            draw.text((text_x, text_y), text, font=font, fill=(255, 255, 255, 255))
+            
+            return np.array(img)
+            
+        except Exception as e:
+            print(f"Error creating shadow text: {e}")
+            return self._create_shadow_text(text, fontsize, color)
+
+    def _create_gradient_text_with_blur(self, text, fontsize):
+        """Create text with configurable background and size control"""
+        try:
+            # Calculate effective font size based on scale
+            effective_fontsize = int(fontsize * WATERMARK_SCALE)
+            
+            # Get font
+            try:
+                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", effective_fontsize)
+            except:
+                font = ImageFont.load_default()
+            
+            # Calculate text size
+            dummy_img = Image.new('RGB', (1, 1))
+            draw = ImageDraw.Draw(dummy_img)
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            
+            # Apply height constraint if specified
+            if WATERMARK_HEIGHT is not None:
+                height_scale = WATERMARK_HEIGHT / text_height
+                effective_fontsize = int(effective_fontsize * height_scale)
+                
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", effective_fontsize)
+                except:
+                    font = ImageFont.load_default()
+                
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+            
+            # Apply width constraint if specified
+            if WATERMARK_MAX_WIDTH is not None and text_width > WATERMARK_MAX_WIDTH:
+                width_scale = WATERMARK_MAX_WIDTH / text_width
+                effective_fontsize = int(effective_fontsize * width_scale)
+                
+                try:
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", effective_fontsize)
+                except:
+                    font = ImageFont.load_default()
+                
+                bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+            
+            padding = max(6, int(8 * WATERMARK_SCALE))
+            canvas_width = text_width + padding * 2
+            canvas_height = text_height + padding * 2
+            
+            # Create image
+            img = Image.new('RGBA', (canvas_width, canvas_height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            
+            # Choose background based on style
+            radius = max(6, int(8 * WATERMARK_SCALE))
+            
+            if WATERMARK_BG_STYLE == 'transparent':
+                # No background
+                pass
+            elif WATERMARK_BG_STYLE == 'black':
+                draw.rounded_rectangle(
+                    [0, 0, canvas_width, canvas_height],
+                    radius=radius,
+                    fill=(0, 0, 0, 255)  # Pure black
+                )
+            elif WATERMARK_BG_STYLE == 'dark_gray':
+                draw.rounded_rectangle(
+                    [0, 0, canvas_width, canvas_height],
+                    radius=radius,
+                    fill=(40, 40, 40, 255)  # Dark gray
+                )
+            elif WATERMARK_BG_STYLE == 'custom':
+                r, g, b = WATERMARK_BG_COLOR
+                draw.rounded_rectangle(
+                    [0, 0, canvas_width, canvas_height],
+                    radius=radius,
+                    fill=(r, g, b, 255)  # Custom color
+                )
+            
+            # Draw text
+            draw.text((padding, padding), text, font=font, fill=(255, 255, 255, 255))
+            
+            return np.array(img)
+            
+        except Exception as e:
+            print(f"Error creating text: {e}")
+            return self._create_gradient_text(text, fontsize)
+
+    def _create_segment_watermark(self, duration):
+        """Create watermark with PROPER positioning - actually sticks to corner"""
+        try:
+            if WATERMARK_STYLE == 'glow':
+                watermark_img = self._create_glow_text_with_blur(
+                    WATERMARK_TEXT,
+                    WATERMARK_FONTSIZE,
+                    WATERMARK_COLOR
+                )
+            elif WATERMARK_STYLE == 'shadow':
+                watermark_img = self._create_shadow_text_with_blur(
+                    WATERMARK_TEXT,
+                    WATERMARK_FONTSIZE,
+                    WATERMARK_COLOR
+                )
+            elif WATERMARK_STYLE == 'outline':
+                watermark_img = self._create_text_with_blur_bg(
+                    WATERMARK_TEXT,
+                    WATERMARK_FONTSIZE,
+                    WATERMARK_COLOR,
+                    'black',
+                    4  # Thick outline
+                )
+            elif WATERMARK_STYLE == 'minimal':
+                watermark_img = self._create_text_with_blur_bg(
+                    WATERMARK_TEXT,
+                    WATERMARK_FONTSIZE,
+                    WATERMARK_COLOR
+                )
+            else:  # gradient
+                watermark_img = self._create_gradient_text_with_blur(
+                    WATERMARK_TEXT,
+                    WATERMARK_FONTSIZE
+                )
+            
+            # Convert to ImageClip
+            txt_clip = ImageClip(watermark_img, duration=duration, transparent=True)
+            
+            # Apply overall opacity
+            if WATERMARK_OPACITY < 1.0:
+                txt_clip = txt_clip.set_opacity(WATERMARK_OPACITY)
+            
+            # FIXED POSITIONING - Calculate EXACT position for bottom-right
+            txt_height, txt_width = watermark_img.shape[:2]
+            
+            # Position from bottom-right corner with margin
+            watermark_x = TARGET_WIDTH - txt_width - WATERMARK_MARGIN
+            watermark_y = TARGET_HEIGHT - txt_height - WATERMARK_MARGIN
+            
+            # Ensure it doesn't go off screen
+            watermark_x = max(0, watermark_x)
+            watermark_y = max(0, watermark_y)
+            
+            return txt_clip.set_position((watermark_x, watermark_y))
+            
+        except Exception as e:
+            print(f"Error creating watermark: {e}")
+            return None
+
     def _create_segment_subtitle_clip(self, sub, segment_start):
         """Create subtitle clip using PIL instead of MoviePy TextClip"""
         try:
@@ -511,211 +1007,6 @@ class SegmentProcessor:
         except Exception as e:
             print(f"Error creating subtitle '{sub['text']}': {e}")
             return None
-
-    def _create_segment_watermark(self, duration):
-        """Create watermark with modern styling instead of boring black box"""
-        try:
-            if WATERMARK_STYLE == 'glow':
-                # Create glowing text effect
-                watermark_img = self._create_glow_text(
-                    WATERMARK_TEXT,
-                    WATERMARK_FONTSIZE,
-                    WATERMARK_COLOR
-                )
-            elif WATERMARK_STYLE == 'shadow':
-                # Drop shadow effect
-                watermark_img = self._create_shadow_text(
-                    WATERMARK_TEXT,
-                    WATERMARK_FONTSIZE,
-                    WATERMARK_COLOR
-                )
-            elif WATERMARK_STYLE == 'outline':
-                # Thick outline only
-                watermark_img = self._create_text_image(
-                    WATERMARK_TEXT,
-                    WATERMARK_FONTSIZE,
-                    WATERMARK_COLOR,
-                    'black',
-                    4  # Thick outline
-                )
-            elif WATERMARK_STYLE == 'minimal':
-                # Simple text with transparency
-                watermark_img = self._create_text_image(
-                    WATERMARK_TEXT,
-                    WATERMARK_FONTSIZE,
-                    WATERMARK_COLOR
-                )
-            else:  # gradient
-                watermark_img = self._create_gradient_text(
-                    WATERMARK_TEXT,
-                    WATERMARK_FONTSIZE
-                )
-            
-            # Convert to ImageClip with opacity
-            txt_clip = ImageClip(watermark_img, duration=duration, transparent=True)
-            
-            # Apply overall opacity
-            if WATERMARK_OPACITY < 1.0:
-                txt_clip = txt_clip.set_opacity(WATERMARK_OPACITY)
-            
-            # Position in bottom-right
-            txt_height, txt_width = watermark_img.shape[:2]
-            watermark_x = TARGET_WIDTH - txt_width - WATERMARK_MARGIN
-            watermark_y = TARGET_HEIGHT - txt_height - WATERMARK_MARGIN
-            
-            return txt_clip.set_position((watermark_x, watermark_y))
-            
-        except Exception as e:
-            print(f"Error creating watermark: {e}")
-            return None
-
-    def _create_glow_text(self, text, fontsize, color):
-        """Create text with a glowing effect"""
-        try:
-            # Get font
-            try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fontsize)
-            except:
-                font = ImageFont.load_default()
-            
-            # Calculate text size
-            dummy_img = Image.new('RGB', (1, 1))
-            draw = ImageDraw.Draw(dummy_img)
-            bbox = draw.textbbox((0, 0), text, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
-            
-            # Create larger canvas for glow effect
-            glow_radius = 8
-            canvas_width = text_width + (glow_radius * 4)
-            canvas_height = text_height + (glow_radius * 4)
-            
-            # Create base image
-            img = Image.new('RGBA', (canvas_width, canvas_height), (0, 0, 0, 0))
-            draw = ImageDraw.Draw(img)
-            
-            text_x = glow_radius * 2
-            text_y = glow_radius * 2
-            
-            # Create glow layers (multiple blurred copies)
-            from PIL import ImageFilter
-            
-            # Create glow base
-            glow_img = Image.new('RGBA', (canvas_width, canvas_height), (0, 0, 0, 0))
-            glow_draw = ImageDraw.Draw(glow_img)
-            
-            # Draw multiple glow layers
-            for i in range(3):
-                offset = i + 1
-                alpha = max(20, 80 - (i * 20))
-                
-                # Draw glow text at slightly different positions
-                for dx in range(-offset, offset + 1):
-                    for dy in range(-offset, offset + 1):
-                        if dx != 0 or dy != 0:
-                            glow_draw.text((text_x + dx, text_y + dy), text, 
-                                         font=font, fill=(255, 255, 255, alpha))
-            
-            # Blur the glow
-            glow_img = glow_img.filter(ImageFilter.GaussianBlur(radius=2))
-            
-            # Composite glow with main image
-            img = Image.alpha_composite(img, glow_img)
-            
-            # Draw main text on top
-            draw = ImageDraw.Draw(img)
-            text_color = (255, 255, 255, 255) if color == 'white' else (255, 255, 255, 255)
-            draw.text((text_x, text_y), text, font=font, fill=text_color)
-            
-            return np.array(img)
-            
-        except Exception as e:
-            print(f"Error creating glow text: {e}")
-            # Fallback to simple text
-            return self._create_text_image(text, fontsize, color)
-
-    def _create_shadow_text(self, text, fontsize, color):
-        """Create text with drop shadow"""
-        try:
-            # Get font
-            try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fontsize)
-            except:
-                font = ImageFont.load_default()
-            
-            # Calculate text size
-            dummy_img = Image.new('RGB', (1, 1))
-            draw = ImageDraw.Draw(dummy_img)
-            bbox = draw.textbbox((0, 0), text, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
-            
-            # Create canvas with shadow space
-            shadow_offset = 3
-            canvas_width = text_width + shadow_offset + 10
-            canvas_height = text_height + shadow_offset + 10
-            
-            img = Image.new('RGBA', (canvas_width, canvas_height), (0, 0, 0, 0))
-            draw = ImageDraw.Draw(img)
-            
-            text_x = 5
-            text_y = 5
-            
-            # Draw shadow
-            draw.text((text_x + shadow_offset, text_y + shadow_offset), text, 
-                     font=font, fill=(0, 0, 0, 128))
-            
-            # Draw main text
-            text_color = (255, 255, 255, 255) if color == 'white' else (255, 255, 255, 255)
-            draw.text((text_x, text_y), text, font=font, fill=text_color)
-            
-            return np.array(img)
-            
-        except Exception as e:
-            print(f"Error creating shadow text: {e}")
-            return self._create_text_image(text, fontsize, color)
-
-    def _create_gradient_text(self, text, fontsize):
-        """Create text with gradient effect"""
-        try:
-            # Get font
-            try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", fontsize)
-            except:
-                font = ImageFont.load_default()
-            
-            # Calculate text size
-            dummy_img = Image.new('RGB', (1, 1))
-            draw = ImageDraw.Draw(dummy_img)
-            bbox = draw.textbbox((0, 0), text, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
-            
-            canvas_width = text_width + 20
-            canvas_height = text_height + 20
-            
-            # Create gradient background
-            img = Image.new('RGBA', (canvas_width, canvas_height), (0, 0, 0, 0))
-            
-            # Create gradient from cyan to purple (trendy colors)
-            for y in range(canvas_height):
-                ratio = y / canvas_height
-                r = int(100 + (150 * ratio))  # 100 -> 250
-                g = int(200 - (100 * ratio))  # 200 -> 100  
-                b = int(255 - (55 * ratio))   # 255 -> 200
-                
-                for x in range(canvas_width):
-                    img.putpixel((x, y), (r, g, b, 50))
-            
-            # Draw text
-            draw = ImageDraw.Draw(img)
-            draw.text((10, 10), text, font=font, fill=(255, 255, 255, 255))
-            
-            return np.array(img)
-            
-        except Exception as e:
-            print(f"Error creating gradient text: {e}")
-            return self._create_text_image(text, fontsize, 'white')
 
     def process_segment(self, segment_start, segment_end, segment_index, img_timestamps):
         """Process a single segment with continuous motion"""
@@ -837,8 +1128,66 @@ class SegmentProcessor:
         
         return resized_clip
 
+    def _apply_corner_cover_to_image(self, get_frame, t):
+        """Apply quarter-circle corner cover with adjustable center offset"""
+        if not ENABLE_CORNER_COVER:
+            return get_frame(t)
+        
+        frame = get_frame(t)
+        
+        # Get frame dimensions
+        frame_height, frame_width = frame.shape[:2]
+        
+        # Calculate cover size based on CORNER_COVER_SIZE
+        cover_radius = int(min(frame_width, frame_height) * CORNER_COVER_SIZE)
+        
+        if CORNER_COVER_TYPE == 'semi_circle':
+            # Create quarter-circle mask in bottom-right corner with offset
+            y_indices, x_indices = np.ogrid[:frame_height, :frame_width]
+            
+            # Center of the quarter circle with offset from corner
+            center_x = frame_width - CORNER_COVER_OFFSET_X   # Move left from right edge
+            center_y = frame_height - CORNER_COVER_OFFSET_Y  # Move up from bottom edge
+            
+            # Create circular mask - only the quarter that's inside the frame
+            distances = np.sqrt((x_indices - center_x)**2 + (y_indices - center_y)**2)
+            mask = distances <= cover_radius
+            
+            # Apply cover only to the quarter circle area
+            if CORNER_COVER_DARKNESS == 0.0:
+                # Pure black
+                frame[mask] = [0, 0, 0]
+            else:
+                # Darken by specified amount
+                frame[mask] = frame[mask] * CORNER_COVER_DARKNESS
+                
+        elif CORNER_COVER_TYPE == 'rectangle':
+            # Simple rectangular cover in bottom-right corner with offset
+            cover_width = int(frame_width * CORNER_COVER_SIZE)
+            cover_height = int(frame_height * CORNER_COVER_SIZE)
+            
+            # Calculate bottom-right area with offset
+            start_x = frame_width - cover_width - CORNER_COVER_OFFSET_X
+            start_y = frame_height - cover_height - CORNER_COVER_OFFSET_Y
+            
+            # Ensure we don't go outside frame bounds
+            start_x = max(0, start_x)
+            start_y = max(0, start_y)
+            end_x = min(frame_width, start_x + cover_width)
+            end_y = min(frame_height, start_y + cover_height)
+            
+            # Apply cover
+            if CORNER_COVER_DARKNESS == 0.0:
+                # Pure black
+                frame[start_y:end_y, start_x:end_x] = [0, 0, 0]
+            else:
+                # Darken by specified amount
+                frame[start_y:end_y, start_x:end_x] = frame[start_y:end_y, start_x:end_x] * CORNER_COVER_DARKNESS
+        
+        return frame
+
     def _create_segment_image_clip(self, entry, segment_start, segment_duration):
-        """Create image clip for segment with global motion continuity"""
+        """Create image clip for segment with global motion continuity and corner cover"""
         tag = entry['tag']
         clip_start = entry['segment_start']
         clip_end = entry['segment_end']
@@ -857,6 +1206,9 @@ class SegmentProcessor:
         try:
             # Create base image clip
             img_clip = ImageClip(image_path).set_duration(clip_duration)
+            
+            # APPLY CORNER COVER FIRST (before any motion)
+            img_clip = img_clip.fl(self._apply_corner_cover_to_image)
             
             # Resize to COMPLETELY FILL screen
             img_clip = self._resize_clip_optimized(img_clip)
@@ -883,7 +1235,7 @@ class SegmentProcessor:
                 def continuous_rotation_func(t):
                     absolute_time = segment_start + clip_start + t
                     transform = self.global_motion_state.get_motion_transform(tag, absolute_time)
-                    return transform.get('rotation', 0)  # REMOVED the 0.1 multiplier
+                    return transform.get('rotation', 0)
                 
                 img_clip = img_clip.rotate(continuous_rotation_func)
             
@@ -1082,7 +1434,7 @@ def main():
     else:
         # Preview mode (first 30 seconds)
         print("Creating preview...")
-        preview_duration = min(30, max(float(entry['end_adjusted']) for entry in img_timestamps))
+        preview_duration = min(5, max(float(entry['end_adjusted']) for entry in img_timestamps))
         
         # Filter for preview
         preview_timestamps = []

@@ -3,3 +3,10 @@ make the structured shit a json so llm is forced to follow the structure
 to encourage persistence, just make every character superman ,or any well known person
 
 in the script json, dont use "" , use another special character, we only use that when producing the raw script
+
+read this in indian accent
+
+idea: indian scammer failed to scam
+
+cockney
+austrilian

@@ -1,0 +1,43 @@
+duration_estimation_milliseconds: 300000
+voice_instruction: read in an indian accent with disappoinment.
+Speaker 1:
+
+<p1 image_prompt="whiteboard filled with red scribbles of sorting algorithms, one bubble sort circled with '??'">So… you failed the technical interview. Again. Okay, first of all — who the hell uses Bubble Sort in 2025? Be honest. Was that a joke?</p1>
+
+<p2 image_prompt="interviewer raising an eyebrow at laptop screen, candidate visibly sweating, search tab open on other screen">You thought the interviewer wouldn’t notice you Googling during the coding round? You alt-tabbed six times in 20 minutes. I counted.</p2>
+
+<p3 image_prompt="diagram of binary search tree with entire right subtree missing, caption says 'where did it go??'">You wrote a binary search... on an unsorted array. You didn’t just fail. You redefined what it means to not understand Big-O.</p3>
+
+<p4 image_prompt="YouTube video titled 'Top 5 Mistakes in Coding Interviews' paused at 00:01, candidate watching Netflix instead">I made seven tutorials on this exact question. You watched none. But you watched that guy speedrun Elden Ring for six hours. Nice use of time, bro.</p4>
+
+<p5 image_prompt="whiteboard with FizzBuzz written in huge letters, candidate crossed it out and wrote 'pass'">They gave you FizzBuzz. FizzBuzz! That’s not even a test — it’s a vibe check. And somehow… you failed the vibe.</p5>
+
+<p6 image_prompt="compiler screen saying 'Segmentation Fault: in line 3', candidate facepalming with 10 tabs open">Pointers? Don’t even talk to me about pointers. You dereferenced NULL and then blamed the interviewer. What were you pointing at — hope?</p6>
+
+<p7 image_prompt="interviewer saying 'implement a linked list' and candidate starts drawing Instagram followers">They said, “Implement a linked list.” You said, “Do I really need to know this in real life?” Bro… it was a LinkedIn interview. Know your audience.</p7>
+
+<p8 image_prompt="stack overflow page titled 'why does recursion hate me?', most upvoted answer is 'because you wrote infinite recursion'">And recursion? You made a recursive function with no base case. You made a black hole, not a program.</p8>
+
+<p9 image_prompt="hashmap with the keys all crossed out and one value: 'help'">You used a HashMap to sort an array. A HashMap. That's like using a blender to iron your clothes. Technically possible, but why?</p9>
+
+<p10 image_prompt="Google search history: 'how to hack into leetcode premium'">Look, I know you’ve been grinding LeetCode. But grinding doesn’t help if you copy-paste the wrong solution. Half your code didn’t compile. The other half just... cried.</p10>
+
+<p11 image_prompt="mock interviewer clearly asleep while candidate explains time complexity incorrectly">You said the time complexity was “O of one unless the array is, like, big or something.” What does that even mean? Did you invent a new notation? Is this quantum DSA?</p11>
+
+<p12 image_prompt="candidate typing 'reverse linked list' and getting an ad for therapy">You know what hurts the most? That you’re not even stupid. You’re just… lazy. You want the job but not the struggle. You want the title, but not the function.</p12>
+
+<p13 image_prompt="YouTube thumbnail of speaker smiling with arms crossed, title: 'Why You Still Suck at Coding (and how to cry less)'">You watched my video at 1.5x speed and thought you absorbed recursion through osmosis. You didn’t. You skipped the hard parts and clapped for yourself anyway.</p13>
+
+<p14 image_prompt="screenshot of chat window: 'Sorry, we’ve moved forward with other candidates' with a clown emoji below">And now you’re here. Crying about rejection emails like they’re personal attacks. They’re not. They’re feedback. Brutal, corporate, algorithmically polite feedback.</p14>
+
+<p15 image_prompt="calendar with every day marked 'grind DSA', none of it crossed out">You had the time. You had the resources. You had the audacity to believe you’d just wing it. And guess what? You got winged.</p15>
+
+<p16 image_prompt="final round interview invite, never opened, covered in digital dust">They gave you a chance. You gave them confusion, stack overflows, and emotional damage. That was your final round. Not final boss. Final warning.</p16>
+
+<p17 image_prompt="image of speaker with arms outstretched, fire behind him, caption: 'System Design doesn’t care about your GPA'">You want to break into FAANG? Bro, you can’t even break into your own GitHub repo without checking Stack Overflow twice.</p17>
+
+<p18 image_prompt="student crying in front of a whiteboard that just says 'DFS = Depth First Suffering'">Look. You failed. Fine. But don’t waste this. Either get serious about this path—or walk away and stop pretending.</p18>
+
+<p19 image_prompt="speaker staring directly at camera, YouTube comments below say 'sir you changed my life 🥹🙏'">I’m not mad. I’m not disappointed. I’m just telling you: this is what it looks like when you don’t respect the grind.</p19>
+
+<p20 image_prompt="mirror shows candidate sitting in interview room, interviewer is now version of himself that actually studied">You don’t need more tutorials. You need to become the version of yourself who wouldn’t have failed that interview. That guy? He doesn’t need me.</p20>

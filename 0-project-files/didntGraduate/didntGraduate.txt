@@ -1,0 +1,45 @@
+duration_estimation_milliseconds: 300000
+voice_instruction: Read this in shakespearean style.
+Speaker 1:
+
+<p1 image_prompt="graduation stage at night, empty chairs, only one robe draped over a trash can in the front row">You're not graduating this year. And deep down, you knew that. Let's not pretend this was some twist ending. This was always the plot.</p1>
+
+<p2 image_prompt="computer screen glowing at 3AM, page titled 'Final Exam' with blinking cursor next to 'Start Test', untouched">What were you even doing? Sleeping through deadlines like they were soft jazz? Watching productivity videos like osmosis was a strategy?</p2>
+
+<p3 image_prompt="university hallway, lockers open and empty, torn poster on wall that says 'You Got This!' scratched out to just 'Got This!'">You failed your final exam? L.O.L. The questions weren't even hard. Just long. Like your list of excuses. And shorter than your attention span.</p3>
+
+<p4 image_prompt="thesis defense panel of professors replaced with mannequins holding 'WRONG' signs, spotlight on student sweating bullets">Your thesis? Let's talk about it. What even was your argument? That you kind of read some of the material, sort of got the gist, and hoped ChatGPT would carry you?</p4>
+
+<p5 image_prompt="AI screen showing perfect thesis with green check marks, overlaid with text: 'Approved: in 0.4 seconds'">Let’s be honest—if ChatGPT did your defense, you’d have graduated with honors. Instead, we got you. Mumbling through your slides like you were allergic to coherence.</p5>
+
+<p6 image_prompt="student standing in front of a PowerPoint slide that just says 'pls clap' in Comic Sans">And don’t get mad when I say this—but halfway through your presentation? Even your PowerPoint gave up and crashed. It knew. We all did.</p6>
+
+<p7 image_prompt="student surrounded by cheering classmates in caps and gowns, but they’re blurry, like they’re from a different reality">Your friends are graduating. Your name’s not even on the list. Not because they forgot—but because you never made it past the footnotes of your own story.</p7>
+
+<p8 image_prompt="motivational speaker pointing at crying student while smiling, text overlay: 'Failure Builds Character™'">But hey—failure builds character, right? You’ll be so interesting to future employers… as a cautionary tale.</p8>
+
+<p9 image_prompt="student typing 'what if I just disappear' into Google search bar, autofill suggests 'from society?'">You told yourself you'd bounce back. Start fresh next semester. New year, new you. But it’s May. You’re still “revising.” Whatever that means now.</p9>
+
+<p10 image_prompt="post-it notes on a wall, all say 'TRY AGAIN' but the last one just says 'WHY?'">Productivity hacks won’t save you. Neither will coffee, pomodoro timers, or that one YouTuber who yells at you to grind while you cry into your ramen.</p10>
+
+<p11 image_prompt="student holding report card with grade: F, surrounded by laughing stock image people giving thumbs up">Here’s the part no one says out loud: maybe this just isn’t for you. Not school. Not success. Not trying at things. You gave it a shot. The shot missed. Hit the ceiling fan.</p11>
+
+<p12 image_prompt="birthday cake with 'Happy 5th Gap Year!' written in icing, candles melting into the frosting">It’s okay though. Take another year off. Call it a sabbatical. Or self-discovery. Or depression, but make it aesthetic on your stories.</p12>
+
+<p13 image_prompt="Google search: 'Can I graduate if I never actually passed anything?', with 0 results">You want a shortcut? A cheat code? Here it is: Stop pretending effort works when you never applied it. Miracles don’t scale. Neither do pity extensions.</p13>
+
+<p14 image_prompt="Zoom call with professors, everyone’s camera off except yours, frozen on an ugly face mid-yawn">They’re not mad. They’re not disappointed. They’re just… done. Your professors won’t even remember your name. You were a blurry box on a laggy screen for three semesters straight.</p14>
+
+<p15 image_prompt="school counselor’s office door slightly ajar, inside is a mirror where you should be">Maybe you should talk to someone. Or maybe you already did. And lied through your teeth about how ‘you’re working on it.’ Sure you are. Me too.</p15>
+
+<p16 image_prompt="university diploma with your name half-printed, then scribbled out, replaced with 'Maybe Next Time' in red pen">This isn’t a setback. It’s a pattern. You’re not unlucky. You’re consistent. Consistently just below minimum standards.</p16>
+
+<p17 image_prompt="celebration party in full swing, banner says 'We Did It!' except 'You' is crossed out in red">Graduation’s a ceremony, not a miracle. It doesn’t come with a participation medal. Or a do-over. It just moves on. With or without you.</p17>
+
+<p18 image_prompt="student sitting alone in library at 3am, books open, but eyes glazed over, while screen says 'Too Late'">This was the part where you were supposed to prove them wrong. But you didn’t even show up for the scene. You let the montage fade out before the climax.</p18>
+
+<p19 image_prompt="empty classroom, lights off, your bag still sitting under the desk collecting dust">So now what? You re-enroll? Try again? Or maybe you just keep lying to your parents for one more semester. One more deadline you’ll miss.</p19>
+
+<p20 image_prompt="TV screen showing graduation ceremony, you watching from couch in pajamas, holding cold pizza slice">But hey, don’t feel bad. You still learned something: how to pretend. How to hope. How to coast. It’s just… nobody gives you a degree for that.</p20>
+
+<p21 image_prompt="back alley with graffitied wall that says 'REALITY GRADUATES EVERYONE' in dripping paint">So here’s your diploma: a reality check. You didn’t pass the test. But you’re still here. And that means you get to try again. Or don’t. Honestly? Nobody’s watching.</p21>

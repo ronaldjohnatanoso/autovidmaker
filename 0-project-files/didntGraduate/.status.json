@@ -1,66 +1,66 @@
 {
-  "created_at": "2025-06-03T04:33:48.033661Z",
+  "created_at": "2025-06-03T05:20:35.950605Z",
   "current_stage": "voice_gen",
   "stages": {
     "voice_gen": {
       "status": "done",
-      "started_at": "2025-06-03T04:33:48.037232Z",
+      "started_at": "2025-06-03T05:56:04.516486Z",
       "completed_at": null,
       "duration": null,
       "error": null,
       "metadata": {},
-      "ended_at": "2025-06-03T04:36:37.594822Z",
-      "duration_seconds": 169.55759
+      "ended_at": "2025-06-03T05:59:54.637546Z",
+      "duration_seconds": 230.12106
     },
     "captions": {
       "status": "done",
-      "started_at": "2025-06-03T04:36:37.595467Z",
+      "started_at": "2025-06-03T05:59:54.638052Z",
       "completed_at": null,
       "duration": null,
       "error": null,
       "metadata": {},
-      "ended_at": "2025-06-03T04:36:52.349694Z",
-      "duration_seconds": 14.754227
+      "ended_at": "2025-06-03T06:00:18.632016Z",
+      "duration_seconds": 23.993964
     },
     "img_prompts": {
       "status": "done",
-      "started_at": "2025-06-03T04:36:52.350252Z",
+      "started_at": "2025-06-03T06:00:18.633429Z",
       "completed_at": null,
       "duration": null,
       "error": null,
       "metadata": {},
-      "ended_at": "2025-06-03T04:36:54.761133Z",
-      "duration_seconds": 2.410881
+      "ended_at": "2025-06-03T06:00:23.461640Z",
+      "duration_seconds": 4.828211
     },
     "image_gen": {
       "status": "done",
-      "started_at": "2025-06-03T04:36:54.761662Z",
+      "started_at": "2025-06-03T06:00:23.462272Z",
       "completed_at": null,
       "duration": null,
       "error": null,
       "metadata": {},
-      "ended_at": "2025-06-03T04:42:59.226331Z",
-      "duration_seconds": 364.464669
+      "ended_at": "2025-06-03T06:07:49.427524Z",
+      "duration_seconds": 445.965252
     },
     "upscale_img": {
       "status": "done",
-      "started_at": "2025-06-03T04:42:59.227061Z",
+      "started_at": "2025-06-03T06:07:49.428147Z",
       "completed_at": null,
       "duration": null,
       "error": null,
       "metadata": {},
-      "ended_at": "2025-06-03T04:46:07.090952Z",
-      "duration_seconds": 187.863891
+      "ended_at": "2025-06-03T06:11:17.653290Z",
+      "duration_seconds": 208.225143
     },
     "img_stitch": {
       "status": "done",
-      "started_at": "2025-06-03T04:46:07.091630Z",
+      "started_at": "2025-06-03T06:11:17.653788Z",
       "completed_at": null,
       "duration": null,
       "error": null,
       "metadata": {},
-      "ended_at": "2025-06-03T05:07:00.170059Z",
-      "duration_seconds": 1253.078429
+      "ended_at": "2025-06-03T06:42:37.493170Z",
+      "duration_seconds": 1879.839382
     },
     "vid_edit": {
       "status": "pending",
