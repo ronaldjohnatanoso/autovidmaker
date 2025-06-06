@@ -103,7 +103,7 @@ if __name__ == '__main__':
     video_stream = next(s for s in probe['streams'] if s['codec_type'] == 'video')
     fps = eval(video_stream['r_frame_rate'])  # e.g., "30/1" -> 30.0
 
-    ctx = moderngl.create_standalone_context()
+    ctx = moderngl.create_context(standalone=True, backend='egl')
 
     # Setup fullscreen quad
     vertices = np.array([
