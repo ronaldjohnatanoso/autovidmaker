@@ -1,28 +1,32 @@
 1
-00:00:00,132 --> 00:00:28,937
-So you failed the technical interview. Again. Okay, first of all, who the hell uses bubble sort in 2025? Be honest. Was that a joke? You thought the interviewer wouldn't notice you googling during the coding round. You alt-tabbed six times in 20 minutes. I counted. You wrote a binary search on an unsorted array. You didn't just fail. You redefined what it means to not understand Big O.
+00:00:00,301 --> 00:00:26,676
+So, you failed the technical interview. Again. Okay. First of all, who the hell uses bubble sort in 2025? Be honest. Was that a joke? You thought the interviewer wouldn't notice you googling during the coding round. You alt-tabbed six times in 20 minutes. I counted. You wrote a binary search on an unsorted array.
 
 2
-00:00:29,596 --> 00:00:59,548
-I made seven tutorials on this exact question. You watched none. But you watched that guy's speedrun Elden ring for six hours. Nice use of time, bro. They gave you fizzbuzz. Fizzbuzz. That's not even a test. It's a vibe check. And somehow, you feel the vibe. Pointers don't even talk to me about pointers. You dereference null and then blame the interviewer. What were you pointing at? Hope? They said, implement a linked list.
+00:00:27,149 --> 00:00:57,067
+You didn't just fail. You redefined what it means to not understand Big O. I made seven tutorials on this exact question. You watched none. But you watched that guy speedrun Elden Ring for six hours. Nice use of time, bro. They gave you fizzbuzz. Fizzbuzz. That's not even a test. It's a vibe check. And somehow you failed the vibe. Pointers don't even talk to me about pointers.
 
 3
-00:00:59,784 --> 00:01:24,659
-You said, do I really need to know this in real life? Bro, it was a LinkedIn interview. Know your audience. And recursion. You made a recursive function with no base case. You made a black hole, not a program. You used a hash map to sort an array. A hash map. That's like using a blender to iron your clothes. Technically possible, but why? Look.
+00:00:57,524 --> 00:01:23,308
+You dereferenced null and then blamed the interviewer. What were you pointing at? Hope. They said, implement a linked list. You said, do I really need to know this in real life? Bro, it was a LinkedIn interview. Know your audience. And recursion. You made a recursive function with no base case. You made a black hole, not a program.
 
 4
-00:01:24,980 --> 00:01:53,346
-I know you've been grinding lead code. But grinding doesn't help if you copy paste the wrong solution. Half your code didn't compile. The other half just cried. You said the time complexity was O of 1 unless the array is like big or something. What does that even mean? Did you invent a new notation? Is this quantum DSA? You know what hurts the most? That you're not even stupid. You're just lazy.
+00:01:23,781 --> 00:01:52,603
+You used a hash map to sort an array. A hash map. That's like using a blender to iron your clothes. Technically possible. But why? Look, I know you've been grinding lead code. But grinding doesn't help if you copy paste the wrong solution. Half your code been compiled. The other half just cried. You said the time complexity was O of 1 unless the array is like big or something.
 
 5
-00:01:53,734 --> 00:02:22,860
-You want the job but not the struggle. You want the title but not the function. You watched my video at 1.5x speed and thought you absorbed recursion through osmosis. You didn't. You skipped the hard parts and clapped for yourself anyway. And now you're here. Crying about rejection emails like they're personal attacks. They're not. They're feedback. Brutal, corporate, algorithmically polite feedback.
+00:01:53,043 --> 00:02:21,645
+What does that even mean? Did you invent a new notation? Is this quantum DSA? You know what hurts the most? That you're not even stupid. You're just lazy. You want the job but not the struggle. You want the title but not the function. You watched my video at 1.5x speed and thought you absorbed recursion through osmosis. You didn't. You skipped the hard parts and clapped for yourself anyway.
 
 6
-00:02:23,552 --> 00:02:53,218
-you had the time you had the resources you had the audacity to believe you'd just wing it and guess what you got winged they gave you a chance you gave them confusion stack overflows and emotional damage that was your final round not final boss final warning you want to break into fang bro you can't even break into your own github repo without checking stack overflow twice look
+00:02:22,102 --> 00:02:49,556
+And now, you're here, crying about rejection emails like they're personal attacks. They're not. They're feedback. Brutal, corporate, algorithmically polite feedback. You had the time. You had the resources. You had the audacity to believe you'd just wing it. And guess what? You got winged. They gave you a chance. You gave them confusion, stack overflows and emotional damage.
 
 7
-00:02:53,741 --> 00:03:18,751
-You failed? Fine. But don't waste this. Either get serious about this path or walk away and stop pretending. I'm not mad. I'm not disappointed. I'm just telling you, this is what it looks like when you don't respect the grind. You don't need more tutorials. You need to become the version of yourself who wouldn't have failed that interview. That guy, he doesn't need me.
+00:02:49,944 --> 00:03:15,021
+that was your final round not final boss final warning you want to break into fang bro you can't even break into your own github repo without checking stack overflow twice look you failed fine but don't waste this either get serious about this path or walk away and stop pretending i'm not mad i'm not disappointed
+
+8
+00:03:15,359 --> 00:03:29,973
+I'm just telling you, this is what it looks like when you don't respect the grind. You don't need more tutorials. You need to become the version of yourself who wouldn't have failed that interview. That guy, he doesn't need me.
 

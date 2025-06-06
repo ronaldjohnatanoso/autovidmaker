@@ -119,7 +119,7 @@ def write_config_file(target_dir, estimated_millis):
         "stages": {
             "voice_gen": {
                 "estimated_duration_ms": estimated_millis,
-                "speaker1" : "Charon",
+                "speaker1" : "Orus",
                 "speaker2" : "Gacrux",
                 "voice_effect": "telephone"
             },

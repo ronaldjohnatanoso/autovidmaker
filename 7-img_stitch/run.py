@@ -4,6 +4,7 @@ os.environ["IMAGEIO_FFMPEG_EXE"] = "/usr/bin/ffmpeg"
 import moviepy.config as config
 config.IMAGEMAGICK_BINARY = None
 
+
 import sys
 import json
 import argparse
@@ -25,7 +26,6 @@ from PIL import Image, ImageDraw, ImageFont
 TARGET_WIDTH = 1920
 TARGET_HEIGHT = 1080
 FPS = 24
-SEGMENT_DURATION = 15  # seconds per segment
 
 # Subtitle styling constants (updated for brain rot)
 SUBTITLE_FONTSIZE = 100  # Bigger text
@@ -51,7 +51,7 @@ ZOOM_RANGE = (1.0, 1.2)  # Min and max zoom levels
 PAN_SPEED = 0.05  # How fast to pan across the image
 
 # Background music constants
-BACKGROUND_MUSIC_FILE = "inspirational.mp3"  # Name of the background music file
+BACKGROUND_MUSIC_FILE = "wander.mp3"  # Name of the background music file
 BACKGROUND_MUSIC_VOLUME = 0.5  # Volume level for background music (0.0 to 1.0)
 
 # Narration audio constants
@@ -115,6 +115,225 @@ CORNER_COVER_SIZE = 0.20  # Size as fraction of image (0.15 = 15% of image size 
 CORNER_COVER_DARKNESS = 0.0  # How dark to make it (0.0 = pure black, 1.0 = no change)
 CORNER_COVER_OFFSET_X = 85  # Pixels to move circle center left from right edge (positive = left)
 CORNER_COVER_OFFSET_Y = 20  # Pixels to move circle center up from bottom edge (positive = up)
+
+
+# DYNAMIC SEGMENT CALCULATION - Remove hardcoded duration
+def calculate_optimal_segments(total_duration, num_images, available_threads):
+    """Calculate optimal segment duration based on content and system specs"""
+    
+    # Base segment duration based on content density
+    images_per_second = num_images / total_duration if total_duration > 0 else 1
+    
+    if images_per_second > 2:
+        # High content density - shorter segments for better parallelization
+        base_duration = 8
+    elif images_per_second > 1:
+        # Medium content density
+        base_duration = 12
+    else:
+        # Low content density - longer segments to reduce overhead
+        base_duration = 20
+    
+    # Adjust based on total duration
+    if total_duration < 30:
+        # Short videos - reduce segment count to minimize overhead
+        base_duration = max(base_duration, total_duration / max(2, available_threads // 2))
+    elif total_duration > 300:
+        # Long videos - ensure we have enough segments for parallelization
+        base_duration = min(base_duration, total_duration / (available_threads * 1.5))
+    
+    # Memory consideration - longer segments use more RAM per thread
+    available_ram_gb = psutil.virtual_memory().available / (1024**3)
+    if available_ram_gb < 8:
+        # Low RAM - use longer segments to reduce concurrent memory usage
+        base_duration *= 1.5
+    elif available_ram_gb > 16:
+        # High RAM - can handle more concurrent shorter segments
+        base_duration *= 0.8
+    
+    # Ensure reasonable bounds
+    optimal_duration = max(5, min(30, base_duration))
+    
+    print(f"Calculated optimal segment duration: {optimal_duration:.1f}s")
+    print(f"  - Content density: {images_per_second:.2f} images/sec")
+    print(f"  - Available RAM: {available_ram_gb:.1f}GB")
+    print(f"  - Will create ~{math.ceil(total_duration / optimal_duration)} segments")
+    
+    return optimal_duration
+
+def calculate_optimal_thread_count(total_segments, system_threads):
+    """Calculate optimal thread count based on workload and system"""
+    
+    # Never exceed system thread count
+    max_threads = system_threads
+    
+    # For small workloads, reduce thread count to minimize overhead
+    if total_segments <= 4:
+        optimal_threads = min(total_segments, max(2, system_threads // 4))
+    elif total_segments <= 8:
+        optimal_threads = min(total_segments, system_threads // 2)
+    else:
+        # For larger workloads, use most threads but leave some for system
+        optimal_threads = min(total_segments, max(system_threads - 2, system_threads * 0.8))
+    
+    # Memory-based adjustment
+    available_ram_gb = psutil.virtual_memory().available / (1024**3)
+    ram_limited_threads = max(2, int(available_ram_gb / 2))  # ~2GB per thread
+    
+    optimal_threads = min(optimal_threads, ram_limited_threads)
+    optimal_threads = max(1, int(optimal_threads))  # Ensure at least 1 thread
+    
+    print(f"Optimal thread count: {optimal_threads}/{system_threads} threads")
+    print(f"  - RAM limit allows: {ram_limited_threads} threads")
+    
+    return optimal_threads
+
+
+def create_threaded_video(project_name, base_dir, upscaled_images_dir, img_timestamps, subtitles):
+    """Create video using DYNAMIC threading with optimal segment sizing"""
+    
+    # Calculate total duration and content metrics
+    total_duration = max(float(entry['end_adjusted']) for entry in img_timestamps)
+    num_images = len(img_timestamps)
+    system_threads = psutil.cpu_count()
+    
+    print(f"Video analysis:")
+    print(f"  - Total duration: {total_duration:.1f}s")
+    print(f"  - Number of images: {num_images}")
+    print(f"  - System threads: {system_threads}")
+    
+    # DYNAMIC: Calculate optimal segment duration
+    optimal_segment_duration = calculate_optimal_segments(
+        total_duration, num_images, system_threads
+    )
+    
+    # Calculate segments with optimal duration
+    segments = []
+    num_segments = math.ceil(total_duration / optimal_segment_duration)
+    
+    for i in range(num_segments):
+        segment_start = i * optimal_segment_duration
+        segment_end = min((i + 1) * optimal_segment_duration, total_duration)
+        segments.append((segment_start, segment_end, i))
+    
+    # DYNAMIC: Calculate optimal thread count
+    optimal_threads = calculate_optimal_thread_count(num_segments, system_threads)
+    
+    print(f"\nProcessing strategy:")
+    print(f"  - {len(segments)} segments of ~{optimal_segment_duration:.1f}s each")
+    print(f"  - Using {optimal_threads} threads")
+    print(f"  - Expected memory usage: ~{optimal_threads * 2:.1f}GB")
+    
+    # Initialize global motion state
+    print("\nInitializing motion state...")
+    global_motion_state = GlobalMotionState(img_timestamps, total_duration)
+    
+    # Process segments with DYNAMIC threading
+    segment_files = []
+    processor = SegmentProcessor(global_motion_state, project_name, base_dir, upscaled_images_dir, subtitles)
+    
+    # Adaptive batch processing for very large segment counts
+    if len(segments) > optimal_threads * 3:
+        print(f"Large workload detected. Processing in batches...")
+        batch_size = optimal_threads * 2
+        batches = [segments[i:i + batch_size] for i in range(0, len(segments), batch_size)]
+        
+        total_completed = 0
+        for batch_idx, batch in enumerate(batches):
+            print(f"\n=== Processing batch {batch_idx + 1}/{len(batches)} ({len(batch)} segments) ===")
+            
+            batch_files = []
+            with ThreadPoolExecutor(max_workers=optimal_threads) as executor:
+                future_to_segment = {}
+                for segment_start, segment_end, segment_index in batch:
+                    future = executor.submit(
+                        processor.process_segment, 
+                        segment_start, segment_end, segment_index, img_timestamps
+                    )
+                    future_to_segment[future] = segment_index
+                
+                for future in as_completed(future_to_segment.keys()):
+                    segment_path, returned_index = future.result()
+                    if segment_path:
+                        batch_files.append((returned_index, segment_path))
+                    
+                    total_completed += 1
+                    print(f"Completed {total_completed}/{len(segments)} total segments")
+            
+            segment_files.extend(batch_files)
+            
+            # Optional: Short pause between batches to let system cool down
+            if batch_idx < len(batches) - 1:
+                time.sleep(1)
+    
+    else:
+        # Normal processing for reasonable workloads
+        completed_count = 0
+        
+        with ThreadPoolExecutor(max_workers=optimal_threads) as executor:
+            future_to_segment = {}
+            for segment_start, segment_end, segment_index in segments:
+                future = executor.submit(
+                    processor.process_segment, 
+                    segment_start, segment_end, segment_index, img_timestamps
+                )
+                future_to_segment[future] = segment_index
+            
+            for future in as_completed(future_to_segment.keys()):
+                segment_path, returned_index = future.result()
+                if segment_path:
+                    segment_files.append((returned_index, segment_path))
+                
+                completed_count += 1
+                progress_pct = (completed_count / len(segments)) * 100
+                print(f"Completed {completed_count}/{len(segments)} segments ({progress_pct:.1f}%)")
+    
+    # Sort segments by index
+    segment_files.sort(key=lambda x: x[0])
+    
+    if not segment_files:
+        print("No segments were created successfully!")
+        return None
+    
+    # Stitch segments with FFmpeg
+    print("\n=== Stitching segments with FFmpeg ===")
+    temp_dir = os.path.dirname(segment_files[0][1])
+    filelist_path = os.path.join(temp_dir, "segments.txt")
+    
+    with open(filelist_path, 'w') as f:
+        for _, segment_path in segment_files:
+            f.write(f"file '{segment_path}'\n")
+    
+    output_path = os.path.join(base_dir, f"{project_name}_stitched.mp4")
+    
+    # FFmpeg concat with exact timing preservation
+    cmd = [
+        'ffmpeg', '-y',
+        '-f', 'concat',
+        '-safe', '0',
+        '-i', filelist_path,
+        '-c', 'copy',  # Copy streams without re-encoding
+        '-avoid_negative_ts', 'make_zero',
+        output_path
+    ]
+    
+    print("Running FFmpeg concatenation...")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    # Cleanup temp files
+    print("Cleaning up temporary files...")
+    for _, segment_path in segment_files:
+        if os.path.exists(segment_path):
+            os.unlink(segment_path)
+    
+    shutil.rmtree(temp_dir)
+    
+    if result.returncode != 0:
+        print(f"FFmpeg stitching failed: {result.stderr}")
+        return None
+    
+    print(f"Video stitched successfully: {output_path}")
+    return output_path
 
 class GlobalMotionState:
     """Manages motion state across the ENTIRE video timeline - shared between all threads"""
@@ -1280,100 +1499,6 @@ class SegmentProcessor:
         
         return should_emphasize
 
-def create_threaded_video(project_name, base_dir, upscaled_images_dir, img_timestamps, subtitles):
-    """Create video using threaded segment processing with continuous motion"""
-    
-    # Calculate total duration
-    total_duration = max(float(entry['end_adjusted']) for entry in img_timestamps)
-    
-    # Initialize global motion state
-    print("Initializing motion state...")
-    global_motion_state = GlobalMotionState(img_timestamps, total_duration)
-    
-    # Calculate segments
-    segments = []
-    num_segments = math.ceil(total_duration / SEGMENT_DURATION)
-    
-    for i in range(num_segments):  # FIXED: Added range()
-        segment_start = i * SEGMENT_DURATION
-        segment_end = min((i + 1) * SEGMENT_DURATION, total_duration)
-        segments.append((segment_start, segment_end, i))
-    
-    print(f"Processing {len(segments)} segments with {psutil.cpu_count()} threads...")
-    
-    # Process segments in parallel
-    segment_files = []
-    processor = SegmentProcessor(global_motion_state, project_name, base_dir, upscaled_images_dir, subtitles)
-    
-    # Simple counter for completed segments
-    completed_count = 0
-    
-    with ThreadPoolExecutor(max_workers=min(len(segments), psutil.cpu_count())) as executor:
-        # FIXED: Store future to segment mapping correctly
-        future_to_segment = {}
-        for segment_start, segment_end, segment_index in segments:
-            future = executor.submit(
-                processor.process_segment, 
-                segment_start, segment_end, segment_index, img_timestamps
-            )
-            future_to_segment[future] = segment_index
-        
-        # FIXED: Collect results properly
-        for future in as_completed(future_to_segment.keys()):
-            segment_path, returned_index = future.result()
-            if segment_path:
-                segment_files.append((returned_index, segment_path))
-            
-            completed_count += 1
-            print(f"\n=== Completed {completed_count}/{len(segments)} segments ===\n")
-    
-    # Sort segments by index
-    segment_files.sort(key=lambda x: x[0])
-    
-    if not segment_files:
-        print("No segments were created successfully!")
-        return None
-    
-    # Stitch segments with FFmpeg
-    print("Stitching segments with FFmpeg...")
-    temp_dir = os.path.dirname(segment_files[0][1])
-    filelist_path = os.path.join(temp_dir, "segments.txt")
-    
-    with open(filelist_path, 'w') as f:
-        for _, segment_path in segment_files:
-            f.write(f"file '{segment_path}'\n")
-    
-    output_path = os.path.join(base_dir, f"{project_name}_stitched.mp4")
-    
-    # FFmpeg concat with exact timing preservation
-    cmd = [
-        'ffmpeg', '-y',
-        '-f', 'concat',
-        '-safe', '0',
-        '-i', filelist_path,
-        '-c', 'copy',  # Copy streams without re-encoding
-        '-avoid_negative_ts', 'make_zero',
-        output_path
-    ]
-    
-    print("Running FFmpeg concatenation...")
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    
-    # Cleanup temp files
-    print("Cleaning up temporary files...")
-    for _, segment_path in segment_files:
-        if os.path.exists(segment_path):
-            os.unlink(segment_path)
-    
-    shutil.rmtree(temp_dir)
-    
-    if result.returncode != 0:
-        print(f"FFmpeg stitching failed: {result.stderr}")
-        return None
-    
-    print(f"Video stitched successfully: {output_path}")
-    return output_path
-
 def main():
     parser = argparse.ArgumentParser(description='Create threaded video with continuous motion')
     parser.add_argument('project_name', help='Name of the project')
@@ -1504,7 +1629,7 @@ def parse_srt(srt_path):
     return subtitles
 
 def add_audio_with_ffmpeg(video_path, audio_path, background_music_path, output_path):
-    """Use FFmpeg to add audio to the concatenated video with two-pass compression"""
+    """Use FFmpeg to add audio to the concatenated video with two-pass compression and create vertical version"""
     
     # STEP 1: Add audio (keeping fast video encoding)
     temp_video_with_audio = output_path.replace('.mp4', '_temp_with_audio.mp4')
@@ -1584,17 +1709,63 @@ def add_audio_with_ffmpeg(video_path, audio_path, background_music_path, output_
     print("Running FFmpeg compression (this is the slow part)...")
     result = subprocess.run(compress_cmd, capture_output=True, text=True)
     
+    if result.returncode != 0:
+        print(f"FFmpeg compression error: {result.stderr}")
+        # Clean up temp file
+        if os.path.exists(temp_video_with_audio):
+            os.unlink(temp_video_with_audio)
+        return False
+    
+    print(f"Successfully compressed video: {output_path}")
+    print("File size should now be 60-80% smaller than before!")
+    
+    # STEP 3: Create vertical (9:16) version for TikTok/YouTube Shorts
+    print("\nStep 3: Creating vertical (9:16) version for TikTok/YouTube Shorts...")
+    vertical_output_path = output_path.replace('_final.mp4', '_vertical.mp4')
+    
+    # Create vertical version by cropping center and scaling
+    vertical_cmd = [
+        'ffmpeg', '-y',
+        '-i', output_path,  # Use the compressed final video
+        # Crop center 1080 pixels wide, then scale to 1080x1920
+        '-filter_complex', '[0:v]crop=1080:1080:420:0,scale=1080:1920[v]',
+        '-map', '[v]',  # Use the filtered video
+        '-map', '0:a',  # Copy audio as-is
+        '-c:a', 'copy',  # Don't re-encode audio
+        '-c:v', 'libx264',  # Re-encode video with good compression
+        '-preset', 'medium',  # Good balance of speed vs compression
+        '-crf', '23',  # Same quality as horizontal version
+        '-movflags', '+faststart',  # Optimize for streaming
+        vertical_output_path
+    ]
+    
+    print("Creating vertical version...")
+    vertical_result = subprocess.run(vertical_cmd, capture_output=True, text=True)
+    
     # Clean up temp file
     if os.path.exists(temp_video_with_audio):
         os.unlink(temp_video_with_audio)
         print("Cleaned up temporary file")
     
-    if result.returncode != 0:
-        print(f"FFmpeg compression error: {result.stderr}")
-        return False
+    if vertical_result.returncode != 0:
+        print(f"Warning: Failed to create vertical version: {vertical_result.stderr}")
+        print("Horizontal version was created successfully though!")
+        return True  # Still return True since main video succeeded
     
-    print(f"Successfully compressed video: {output_path}")
-    print("File size should now be 60-80% smaller than before!")
+    print(f"✅ Successfully created both versions!")
+    print(f"📺 Horizontal (16:9): {output_path}")
+    print(f"📱 Vertical (9:16): {vertical_output_path}")
+    
+    # Show file sizes for comparison
+    try:
+        horizontal_size = os.path.getsize(output_path) / (1024 * 1024)  # MB
+        vertical_size = os.path.getsize(vertical_output_path) / (1024 * 1024)  # MB
+        print(f"\n📊 File sizes:")
+        print(f"   Horizontal (16:9): {horizontal_size:.1f} MB")
+        print(f"   Vertical (9:16): {vertical_size:.1f} MB")
+    except:
+        pass
+    
     return True
 
 if __name__ == "__main__":

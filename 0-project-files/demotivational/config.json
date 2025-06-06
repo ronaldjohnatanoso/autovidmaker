@@ -2,7 +2,7 @@
   "stages": {
     "voice_gen": {
       "estimated_duration_ms": 300000,
-      "speaker1": "Charon",
+      "speaker1": "Orus",
       "speaker2": "Gacrux",
       "voice_effect": "telephone"
     },
