@@ -558,36 +558,6 @@ def decode_video_segment(input_file, start_time, duration):
     process.wait()
     return frames
 
-def decode_video_segment_by_frames(input_file, start_frame, num_frames, fps):
-    """Decode a segment of video frames by exact frame numbers"""
-    start_time = start_frame / fps
-    duration = num_frames / fps
-    
-    process = (
-        ffmpeg
-        .input(input_file, ss=start_time, t=duration)
-        .output('pipe:', format='rawvideo', pix_fmt='rgb24')
-        .run_async(pipe_stdout=True, pipe_stderr=subprocess.DEVNULL)
-    )
-    
-    probe = ffmpeg.probe(input_file, cmd='ffprobe')
-    video_stream = next(s for s in probe['streams'] if s['codec_type'] == 'video')
-    width = int(video_stream['width'])
-    height = int(video_stream['height'])
-    
-    frames = []
-    frame_count = 0
-    while True:
-        in_bytes = process.stdout.read(width * height * 3)
-        if not in_bytes or frame_count >= num_frames:
-            break
-        frame = np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3])
-        frames.append(frame)
-        frame_count += 1
-    
-    process.wait()
-    return frames
-
 def run_shader_on_frame(ctx, prog, vao, frame, global_time):
     """Render frame texture with shader, read back pixels"""
     height, width = frame.shape[:2]
@@ -1089,15 +1059,15 @@ def process_video_segments(input_file, output_file):
         temp_dir = tempfile.mkdtemp()
         segment_files = []
         
-        # ===== FRAME-ACCURATE PROCESSING =====
-        current_frame = 0  # Track exact frame number
-        segment_index = 0
+        total_frames_processed = 0
         start_time = time.time()
         
         try:
-            while current_frame < total_frames:
-                print(f"\n🎬 Segment {segment_index + 1} - FRAME-ACCURATE PROCESSING")
-                print(f"   📊 Starting from frame {current_frame + 1}/{total_frames}")
+            current_time = 0
+            segment_index = 0
+            
+            while total_frames_processed < total_frames:
+                print(f"\n🎬 Segment {segment_index + 1} - ULTRA PARALLEL BATCH")
                 
                 # Create fresh context
                 ctx_start = time.time()
@@ -1107,32 +1077,34 @@ def process_video_segments(input_file, output_file):
                 print(f"   🔄 Fresh context: {ctx_time*1000:.1f}ms, VRAM: {ctx_start_vram}MB → {ctx_end_vram}MB")
                 
                 try:
-                    # Calculate exact frames for this segment
-                    remaining_frames = total_frames - current_frame
-                    frames_this_segment = min(max_frames_per_segment, remaining_frames)
+                    # Calculate segment
+                    remaining_frames = total_frames - total_frames_processed
+                    current_segment_frames = min(max_frames_per_segment, remaining_frames)
+                    current_segment_duration = current_segment_frames / fps
                     
-                    progress = current_frame / total_frames * 100
-                    print(f"   📊 Progress: {progress:.1f}% (frame {current_frame + 1} to {current_frame + frames_this_segment})")
-                    print(f"   🎯 Ultra parallel batch: {frames_this_segment} frames")
+                    progress = total_frames_processed / total_frames * 100
+                    print(f"   📊 Progress: {progress:.1f}% ({total_frames_processed}/{total_frames})")
+                    print(f"   🎯 Ultra parallel batch: {current_segment_frames} frames")
                     
-                    # Decode EXACT frames (no overlap/gap)
+                    # Decode frames
                     decode_start = time.time()
-                    frames = decode_video_segment_by_frames(input_file, current_frame, frames_this_segment, fps)
+                    frames = decode_video_segment(input_file, current_time, current_segment_duration)
                     decode_time = time.time() - decode_start
                     
                     if not frames:
-                        print("   ⚠️  No frames decoded, stopping")
                         break
                     
                     actual_decoded = len(frames)
-                    print(f"   📥 Decoded frames {current_frame + 1} to {current_frame + actual_decoded} ({decode_time:.1f}s)")
+                    print(f"   📥 Decoded {actual_decoded} frames in {decode_time:.1f}s")
+                    
+                    # Trim if needed
+                    if total_frames_processed + actual_decoded > total_frames:
+                        frames = frames[:total_frames - total_frames_processed]
                     
                     # === ULTRA PARALLEL PROCESSING ===
-                    # Calculate time offset for this segment
-                    segment_start_time = current_frame / fps
-                    
                     batch_start = time.time()
-                    processed_frames = process_frames_batch_ultra_parallel(ctx, prog, vao, frames, segment_start_time, fps)
+                    processed_frames = process_frames_batch_ultra_parallel(ctx, prog, vao, frames, current_time, fps)
+                    # Alternative: processed_frames = process_frames_batch_mega_parallel(ctx, prog, vao, frames, current_time, fps)
                     batch_time = time.time() - batch_start
                     
                     actual_processed = len(processed_frames)
@@ -1166,11 +1138,10 @@ def process_video_segments(input_file, output_file):
                     
                     print(f"   💾 Encoded in {encode_time:.1f}s")
                     
-                    # ===== UPDATE FRAME COUNTER (NO GAPS/OVERLAPS) =====
-                    current_frame += actual_processed  # Next segment starts at current_frame + 1
+                    # Update counters
+                    total_frames_processed += actual_processed
+                    current_time += (actual_processed / fps)
                     segment_index += 1
-                    
-                    print(f"   ✅ Segment complete. Next segment starts at frame {current_frame + 1}")
                     
                     # Cleanup
                     del frames, processed_frames
@@ -1183,8 +1154,6 @@ def process_video_segments(input_file, output_file):
                     cleanup_time = time.time() - cleanup_start
                     
                     print(f"   💥 Context destroyed: {cleanup_time*1000:.1f}ms")
-            
-            print(f"\n✅ All {total_frames} frames processed across {segment_index} segments")
             
             # Concatenate segments
             print("\n🔗 Concatenating segments...")
