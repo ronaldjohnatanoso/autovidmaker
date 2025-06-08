@@ -1,162 +1,190 @@
-import moderngl
+import logging
+import subprocess
 import numpy as np
-import cv2
+import moderngl
+import psutil
+import sys
 import time
-import tkinter as tk
-from PIL import Image, ImageTk
+import matplotlib.pyplot as plt
 
-# Resolution constant
-RESOLUTION = (1920, 1080)  # Width, Height
+from pathlib import Path
+from tqdm import tqdm
 
-# Vertex shader
-vertex_shader = '''
-#version 330 core
-in vec2 in_position;
-in vec2 in_texcoord;
-out vec2 v_texcoord;
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 
-void main() {
-    gl_Position = vec4(in_position, 0.0, 1.0);
-    v_texcoord = in_texcoord;
-}
-'''
+WIDTH = 1920
+HEIGHT = 1080
+FRAME_RATE = 30
+VRAM_THRESHOLD = 0.95  # 95%
 
-# Fragment shader with pulsing red effect
-fragment_shader = '''
-#version 330 core
-uniform sampler2D u_texture;
+# Define pulsing red shader
+FRAGMENT_SHADER = '''
+#version 330
+uniform sampler2D tex;
 uniform float u_time;
-in vec2 v_texcoord;
-out vec4 fragColor;
+in vec2 uv;
+out vec4 color;
 
 void main() {
-    vec4 original = texture(u_texture, v_texcoord);
-    float pulse = sin(u_time * 3.14159) * 0.5 + 0.5;
+    vec4 c = texture(tex, uv);
+    
+    // Create a pulsing effect using sine wave (same as balls.py)
+    float pulse = sin(u_time * 3.14159) * 0.5 + 0.5;  // Changed from 'time' to 'u_time'
+    
+    // Apply red overlay (additive, not multiplicative)
     vec3 red_overlay = vec3(pulse, 0.0, 0.0);
-    vec3 result = mix(original.rgb, original.rgb + red_overlay, 0.3);
-    fragColor = vec4(result, original.a);
+    vec3 result = mix(c.rgb, c.rgb + red_overlay, 0.3);  // Add red, don't multiply
+    
+    color = vec4(result, c.a);
 }
 '''
 
-def process_video_with_preview(input_path, output_path):
-    # Create EGL context
-    ctx = moderngl.create_context(standalone=True, backend='egl')
-    
-    # Open input video
-    cap = cv2.VideoCapture(input_path)
-    if not cap.isOpened():
-        print("Error: Could not open input video")
-        return
-        
-    # Get video properties
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    width, height = RESOLUTION
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    
-    print(f"Processing video: {width}x{height}, {fps}fps, {total_frames} frames")
-    
-    # Setup output video writer
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_path, fourcc, fps, RESOLUTION)
-    
-    # Create shader program
-    program = ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
-    
-    # Create texture
-    texture = ctx.texture(RESOLUTION, 3)
-    texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
-    
-    # Create framebuffer
-    fbo = ctx.framebuffer(color_attachments=[ctx.texture(RESOLUTION, 3)])
-    
-    # Vertex data for full-screen quad
-    vertices = np.array([
-        # Position  # TexCoord
-        -1.0, -1.0,  0.0, 1.0,
-         1.0, -1.0,  1.0, 1.0,
-         1.0,  1.0,  1.0, 0.0,
-        -1.0, -1.0,  0.0, 1.0,
-         1.0,  1.0,  1.0, 0.0,
-        -1.0,  1.0,  0.0, 0.0,
-    ], dtype=np.float32)
-    
-    # Create vertex buffer and vertex array
-    vbo = ctx.buffer(vertices.tobytes())
-    vao = ctx.vertex_array(program, [(vbo, '2f 2f', 'in_position', 'in_texcoord')])
-    
-    # Create GUI window
-    root = tk.Tk()
-    root.title("Video Preview")
-    canvas = tk.Canvas(root, width=width, height=height)
-    canvas.pack()
-    
-    frame_count = 0
-    
-    def update_preview():
-        nonlocal frame_count
-        ret, frame = cap.read()
-        if not ret:
-            root.quit()
-            return
-            
-        # Resize frame to match RESOLUTION
-        frame = cv2.resize(frame, RESOLUTION)
-        
-        # Convert BGR to RGB
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        
-        # Calculate time for pulsing effect
-        current_time = frame_count / fps
-        
-        # Upload frame to texture
-        texture.write(frame_rgb.tobytes())
-        
-        # Render with shader
-        fbo.use()
-        ctx.clear(0.0, 0.0, 0.0, 1.0)
-        program['u_texture'].value = 0
-        program['u_time'].value = current_time
-        texture.use(0)
-        vao.render()
-        
-        # Read processed frame
-        processed_data = fbo.read(components=3)
-        processed_frame = np.frombuffer(processed_data, dtype=np.uint8).reshape((height, width, 3))
-        
-        # Flip vertically (OpenGL to image coordinates)
-        processed_frame = np.flipud(processed_frame)
-        
-        # Convert back to BGR for OpenCV
-        processed_frame_bgr = cv2.cvtColor(processed_frame, cv2.COLOR_RGB2BGR)
-        
-        # Write to output video
-        out.write(processed_frame_bgr)
-        
-        # Display preview in GUI
-        preview_image = Image.fromarray(processed_frame)
-        preview_photo = ImageTk.PhotoImage(image=preview_image)
-        canvas.create_image(0, 0, anchor=tk.NW, image=preview_photo)
-        canvas.image = preview_photo
-        
-        # Print progress
-        if frame_count % 30 == 0:
-            progress = (frame_count / total_frames) * 100
-            print(f"Progress: {progress:.1f}%")
-        
-        frame_count += 1
-        root.after(int(1000 / fps), update_preview)
-    
-    update_preview()
-    root.mainloop()
-    
-    # Cleanup
-    cap.release()
-    out.release()
-    ctx.release()
-    
-    print("Processing completed!")
+VERTEX_SHADER = '''
+#version 330
+in vec2 in_vert;
+in vec2 in_uv;
+out vec2 uv;
+void main() {
+    uv = in_uv;
+    gl_Position = vec4(in_vert, 0.0, 1.0);
+}
+'''
 
-if __name__ == "__main__":
-    input_file = "input.mp4"
-    output_file = "output.mp4"
-    process_video_with_preview(input_file, output_file)
+def get_gpu_memory_usage():
+    """Check GPU memory usage using nvidia-smi if available."""
+    try:
+        result = subprocess.run(
+            ['nvidia-smi', '--query-gpu=memory.used,memory.total',
+             '--format=csv,nounits,noheader'],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            check=True, text=True
+        )
+        used, total = map(int, result.stdout.strip().split('\n')[0].split(','))
+        return used / total
+    except Exception as e:
+        logging.warning(f"Failed to retrieve GPU memory usage: {e}")
+        return 0  # Fallback if not using NVIDIA or not found
+
+def setup_ffmpeg_input():
+    logging.info("Setting up FFmpeg input process with GPU acceleration.")
+    return subprocess.Popen(
+        ['ffmpeg', '-hwaccel', 'cuda', '-c:v', 'h264_cuvid', '-i', 'input.mp4',
+         '-vf', f'scale={WIDTH}:{HEIGHT}',
+         '-f', 'rawvideo',
+         '-pix_fmt', 'rgb24', '-'],
+        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL  # Suppress FFmpeg output
+    )
+
+def setup_ffmpeg_output():
+    logging.info("Setting up FFmpeg output process with GPU encoding.")
+    return subprocess.Popen(
+        ['ffmpeg',
+         '-y', '-f', 'rawvideo',
+         '-vcodec', 'rawvideo',
+         '-pix_fmt', 'rgb24',
+         '-s', f'{WIDTH}x{HEIGHT}',
+         '-r', str(FRAME_RATE),
+         '-i', '-', '-an',
+         '-vcodec', 'h264_nvenc',  # Use NVIDIA GPU for encoding
+         '-pix_fmt', 'yuv420p',
+         'output.mp4'],
+        stdin=subprocess.PIPE, stderr=subprocess.DEVNULL  # Suppress FFmpeg output
+    )
+
+def main():
+    logging.info("Initializing OpenGL context.")
+    ctx = moderngl.create_standalone_context(backend='egl')
+
+    prog = ctx.program(vertex_shader=VERTEX_SHADER, fragment_shader=FRAGMENT_SHADER)
+    prog['u_time'] = 0.0  # Changed from 'time' to 'u_time'
+
+    quad = ctx.buffer(np.array([
+        -1.0, -1.0, 0.0, 0.0,
+         1.0, -1.0, 1.0, 0.0,
+        -1.0,  1.0, 0.0, 1.0,
+         1.0,  1.0, 1.0, 1.0,
+    ], dtype='f4'))
+
+    vao = ctx.vertex_array(
+        prog,
+        [(quad, '2f 2f', 'in_vert', 'in_uv')]
+    )
+
+    tex = ctx.texture((WIDTH, HEIGHT), 3)
+    tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+    fbo = ctx.framebuffer(color_attachments=[ctx.texture((WIDTH, HEIGHT), 3)])
+
+    ffmpeg_in = setup_ffmpeg_input()
+    ffmpeg_out = setup_ffmpeg_output()
+
+    gpu_usage_data = []  # Store GPU usage data
+    timestamps = []  # Store timestamps
+
+    try:
+        logging.info("Starting video processing loop.")
+        pbar = tqdm(desc="Processing frames", unit="frame", dynamic_ncols=True)
+        frame_count = 0  # Add frame counter
+
+        while True:
+            raw_frame = ffmpeg_in.stdout.read(WIDTH * HEIGHT * 3)
+            if not raw_frame:
+                logging.info("No more frames to process. Exiting loop.")
+                break
+
+            frame = np.frombuffer(raw_frame, dtype=np.uint8).reshape((HEIGHT, WIDTH, 3))
+            tex.write(frame.tobytes())
+            fbo.use()
+            tex.use(0)
+            prog['tex'] = 0
+            prog['u_time'] = frame_count / FRAME_RATE  # Changed from 'time' to 'u_time'
+            vao.render(moderngl.TRIANGLE_STRIP)
+
+            out_data = fbo.read(components=3, alignment=1)
+            ffmpeg_out.stdin.write(out_data)
+
+            # Update progress bar
+            pbar.update(1)
+
+            # Log GPU usage
+            gpu_usage = get_gpu_memory_usage()
+            gpu_usage_data.append(gpu_usage * 100)  # Convert to percentage
+            timestamps.append(time.time())
+
+            if gpu_usage >= VRAM_THRESHOLD:
+                logging.error("⚠️ VRAM threshold exceeded. Killing process.")
+                break
+
+            frame_count += 1  # Increment frame counter
+
+        pbar.close()
+
+    finally:
+        logging.info("Terminating FFmpeg processes.")
+        ffmpeg_in.terminate()
+        ffmpeg_out.stdin.close()
+        ffmpeg_out.wait()
+        logging.info("Video processing completed.")
+
+        # Plot VRAM usage graph
+        plt.figure(figsize=(10, 6))
+        plt.plot(timestamps, gpu_usage_data, label="VRAM Usage (%)", color="blue")
+        plt.axhline(y=VRAM_THRESHOLD * 100, color="red", linestyle="--", label="Threshold (95%)")
+        plt.xlabel("Time (seconds)")
+        plt.ylabel("VRAM Usage (%)")
+        plt.title("VRAM Usage Over Time")
+        plt.legend()
+        plt.grid()
+        plt.savefig("vram_usage_report.png")  # Save the graph as an image
+        # plt.show()
+
+if __name__ == '__main__':
+    logging.info("Starting main program.")
+    start_time = time.time()
+    main()
+    end_time = time.time()
+    logging.info(f"Program completed in {end_time - start_time:.2f} seconds.")
