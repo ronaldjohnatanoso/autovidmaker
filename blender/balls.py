@@ -2,6 +2,11 @@ import moderngl
 import numpy as np
 import cv2
 import time
+import tkinter as tk
+from PIL import Image, ImageTk
+
+# Resolution constant
+RESOLUTION = (1920, 1080)  # Width, Height
 
 # Vertex shader
 vertex_shader = '''
@@ -33,7 +38,7 @@ void main() {
 }
 '''
 
-def process_video(input_path, output_path):
+def process_video_with_preview(input_path, output_path):
     # Create EGL context
     ctx = moderngl.create_context(standalone=True, backend='egl')
     
@@ -45,25 +50,24 @@ def process_video(input_path, output_path):
         
     # Get video properties
     fps = cap.get(cv2.CAP_PROP_FPS)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    width, height = RESOLUTION
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     
     print(f"Processing video: {width}x{height}, {fps}fps, {total_frames} frames")
     
     # Setup output video writer
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+    out = cv2.VideoWriter(output_path, fourcc, fps, RESOLUTION)
     
     # Create shader program
     program = ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
     
     # Create texture
-    texture = ctx.texture((width, height), 3)
+    texture = ctx.texture(RESOLUTION, 3)
     texture.filter = (moderngl.LINEAR, moderngl.LINEAR)
     
     # Create framebuffer
-    fbo = ctx.framebuffer(color_attachments=[ctx.texture((width, height), 3)])
+    fbo = ctx.framebuffer(color_attachments=[ctx.texture(RESOLUTION, 3)])
     
     # Vertex data for full-screen quad
     vertices = np.array([
@@ -80,13 +84,24 @@ def process_video(input_path, output_path):
     vbo = ctx.buffer(vertices.tobytes())
     vao = ctx.vertex_array(program, [(vbo, '2f 2f', 'in_position', 'in_texcoord')])
     
+    # Create GUI window
+    root = tk.Tk()
+    root.title("Video Preview")
+    canvas = tk.Canvas(root, width=width, height=height)
+    canvas.pack()
+    
     frame_count = 0
     
-    while True:
+    def update_preview():
+        nonlocal frame_count
         ret, frame = cap.read()
         if not ret:
-            break
+            root.quit()
+            return
             
+        # Resize frame to match RESOLUTION
+        frame = cv2.resize(frame, RESOLUTION)
+        
         # Convert BGR to RGB
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
@@ -117,13 +132,23 @@ def process_video(input_path, output_path):
         # Write to output video
         out.write(processed_frame_bgr)
         
+        # Display preview in GUI
+        preview_image = Image.fromarray(processed_frame)
+        preview_photo = ImageTk.PhotoImage(image=preview_image)
+        canvas.create_image(0, 0, anchor=tk.NW, image=preview_photo)
+        canvas.image = preview_photo
+        
         # Print progress
         if frame_count % 30 == 0:
             progress = (frame_count / total_frames) * 100
             print(f"Progress: {progress:.1f}%")
         
         frame_count += 1
-        
+        root.after(int(1000 / fps), update_preview)
+    
+    update_preview()
+    root.mainloop()
+    
     # Cleanup
     cap.release()
     out.release()
@@ -134,4 +159,4 @@ def process_video(input_path, output_path):
 if __name__ == "__main__":
     input_file = "input.mp4"
     output_file = "output.mp4"
-    process_video(input_file, output_file)
+    process_video_with_preview(input_file, output_file)
