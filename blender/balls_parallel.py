@@ -19,6 +19,7 @@ import PIL.ImageFont
 import cv2
 import tempfile
 import multiprocessing as mp
+import re
 
 # Configure logging
 logging.basicConfig(
@@ -33,10 +34,174 @@ HEIGHT = 1080
 FRAME_RATE = 30
 VRAM_THRESHOLD = 0.95
 SEGMENT_DURATION = 20
-MAX_WORKERS = 6
+MAX_WORKERS = 6  # Reduce this for your RTX 3050 - too many parallel processes can cause issues
 
 # Set to True to only process and preview first 10 seconds
 PREVIEW_MODE = False
+
+def parse_srt_file(srt_path):
+    """Parse SRT subtitle file and return list of subtitle entries"""
+    if not os.path.exists(srt_path):
+        logging.warning(f"SRT file not found: {srt_path}")
+        return []
+    
+    subtitles = []
+    
+    try:
+        with open(srt_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Split by double newlines to get subtitle blocks
+        blocks = re.split(r'\n\s*\n', content.strip())
+        
+        for block in blocks:
+            lines = block.strip().split('\n')
+            if len(lines) < 3:
+                continue
+            
+            # Parse timing line (format: 00:00:00,000 --> 00:00:07,253)
+            timing_line = lines[1]
+            timing_match = re.match(r'(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})', timing_line)
+            
+            if not timing_match:
+                continue
+            
+            # Convert to seconds
+            start_h, start_m, start_s, start_ms = map(int, timing_match.groups()[:4])
+            end_h, end_m, end_s, end_ms = map(int, timing_match.groups()[4:])
+            
+            start_time = start_h * 3600 + start_m * 60 + start_s + start_ms / 1000.0
+            end_time = end_h * 3600 + end_m * 60 + end_s + end_ms / 1000.0
+            
+            # Get subtitle text (can be multiple lines)
+            text = '\n'.join(lines[2:]).strip()
+            
+            subtitles.append({
+                'start_time': start_time,
+                'end_time': end_time,
+                'text': text,
+                'duration': end_time - start_time
+            })
+    
+    except Exception as e:
+        logging.error(f"Error parsing SRT file: {e}")
+        return []
+    
+    logging.info(f"Loaded {len(subtitles)} subtitle entries")
+    return subtitles
+
+def create_text_texture(text, font_size=48, max_width=1600):
+    """Create text texture with stroke effect for GPU rendering"""
+    if not text or text.strip() == "":
+        # Return empty texture
+        return np.zeros((64, 64, 4), dtype=np.uint8), 64, 64
+    
+    try:
+        # Find available font
+        font_paths = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 
+            "/usr/share/fonts/truetype/ubuntu/Ubuntu-Bold.ttf",
+            "/System/Library/Fonts/Arial.ttf",
+            "C:/Windows/Fonts/arial.ttf",
+            "/usr/share/fonts/TTF/arial.ttf"
+        ]
+        
+        font = None
+        for font_path in font_paths:
+            if os.path.exists(font_path):
+                try:
+                    font = PIL.ImageFont.truetype(font_path, font_size)
+                    break
+                except:
+                    continue
+        
+        if font is None:
+            font = PIL.ImageFont.load_default()
+        
+        # Split text into lines and measure with proper descender handling
+        lines = text.split('\n')
+        line_heights = []
+        line_widths = []
+        line_ascents = []
+        line_descents = []
+        
+        # Test string with descenders to get proper metrics
+        test_string = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890.,;:!?()[]{}\"'`~@#$%^&*-_+=|\\/<>ypqgjQ"
+        test_bbox = font.getbbox(test_string)
+        font_ascent = abs(test_bbox[1])  # Distance from baseline to top
+        font_descent = test_bbox[3] - font_ascent  # Distance from baseline to bottom
+        
+        for line in lines:
+            if line.strip():  # Non-empty line
+                bbox = font.getbbox(line)
+                line_width = bbox[2] - bbox[0]
+                # Use consistent line height based on font metrics
+                line_height = font_ascent + font_descent
+            else:  # Empty line
+                line_width = 0
+                line_height = font_ascent + font_descent
+            
+            line_widths.append(line_width)
+            line_heights.append(line_height)
+            line_ascents.append(font_ascent)
+            line_descents.append(font_descent)
+        
+        # Calculate total dimensions
+        text_width = min(max(line_widths) if line_widths else 0, max_width)
+        line_spacing = int(font_size * 0.2)
+        text_height = sum(line_heights) + (len(lines) - 1) * line_spacing
+        
+        # Add padding for stroke effect and descenders
+        stroke_width = max(2, font_size // 16)
+        padding = stroke_width * 3 + font_descent  # Extra padding for descenders
+        
+        img_width = text_width + padding * 2
+        img_height = text_height + padding * 2
+        
+        # Create image with transparency
+        img = PIL.Image.new('RGBA', (img_width, img_height), (0, 0, 0, 0))
+        draw = PIL.ImageDraw.Draw(img)
+        
+        # Draw text with stroke effect
+        y_offset = padding + font_ascent  # Start from baseline, not top
+        
+        for i, line in enumerate(lines):
+            if not line.strip():  # Skip empty lines but maintain spacing
+                y_offset += line_heights[i] + line_spacing
+                continue
+                
+            # Center each line
+            line_width = line_widths[i] if i < len(line_widths) else 0
+            x_pos = (img_width - line_width) // 2
+            
+            # Draw stroke (black outline) - draw from baseline
+            for dx in range(-stroke_width, stroke_width + 1):
+                for dy in range(-stroke_width, stroke_width + 1):
+                    if dx*dx + dy*dy <= stroke_width*stroke_width:
+                        draw.text((x_pos + dx, y_offset + dy), line, font=font, fill=(0, 0, 0, 255), anchor="ls")
+            
+            # Draw main text (white) - draw from baseline
+            draw.text((x_pos, y_offset), line, font=font, fill=(255, 255, 255, 255), anchor="ls")
+            
+            y_offset += line_heights[i] + line_spacing
+        
+        # Convert to numpy array
+        img_array = np.array(img)
+        return img_array, img_width, img_height
+        
+    except Exception as e:
+        logging.warning(f"Text texture generation failed: {e}")
+        # Return empty texture
+        fallback = np.zeros((64, 64, 4), dtype=np.uint8)
+        return fallback, 64, 64
+
+def get_subtitle_for_time(subtitles, current_time):
+    """Get the subtitle that should be displayed at the given time"""
+    for subtitle in subtitles:
+        if subtitle['start_time'] <= current_time <= subtitle['end_time']:
+            return subtitle
+    return None
 
 def load_project_data(project_name):
     """Load project images and timing data from project folder structure"""
@@ -55,9 +220,13 @@ def load_project_data(project_name):
     with open(timing_file, 'r') as f:
         timing_data = json.load(f)
     
+    # Load subtitles
+    srt_file = project_dir / f"{project_name}_wordlevel.srt"
+    subtitles = parse_srt_file(srt_file)
+    
     # Find images directory
     images_dir = None
-    for dir_name in [ 'images_1080p']:
+    for dir_name in ['images_1080p']:
         test_dir = project_dir / dir_name
         if test_dir.exists():
             images_dir = test_dir
@@ -101,7 +270,7 @@ def load_project_data(project_name):
         total_duration = max(total_duration, end_time)
     
     logging.info(f"Loaded {len(image_timeline)} images, total duration: {total_duration:.2f}s")
-    return image_timeline, total_duration
+    return image_timeline, total_duration, subtitles
 
 def create_image_video_segments(image_timeline, total_duration, output_dir):
     """Create video segments from image timeline data"""
@@ -236,7 +405,7 @@ def get_gpu_memory_usage():
         logging.warning(f"Failed to retrieve GPU memory usage: {e}")
         return 0
 
-def process_image_segment(segment_info, progress_queue=None):
+def process_image_segment(segment_info, subtitles, progress_queue=None):
     """Process one video segment with shader effects applied to image timeline"""
     segment_idx = segment_info['index']
     output_file = segment_info['output']
@@ -271,26 +440,38 @@ def process_image_segment(segment_info, progress_queue=None):
         # Create textures and framebuffer
         tex = ctx.texture((WIDTH, HEIGHT), 3)
         tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        
+        # Create subtitle texture (will be updated per frame)
+        subtitle_tex = ctx.texture((64, 64), 4)  # Start with small texture
+        subtitle_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        
         fbo = ctx.framebuffer(color_attachments=[ctx.texture((WIDTH, HEIGHT), 3)])
         
-        # Setup FFmpeg output with better error handling
+        # Setup FFmpeg output with NVIDIA GPU encoding
         ffmpeg_cmd = [
             'ffmpeg', '-y', '-f', 'rawvideo',
             '-vcodec', 'rawvideo', '-pix_fmt', 'rgb24',
             '-s', f'{WIDTH}x{HEIGHT}', '-r', str(FRAME_RATE),
-            '-i', '-', '-an', '-vcodec', 'libx264',  # Changed from h264_nvenc to libx264
-            '-preset', 'fast',  # Added preset for faster encoding
-            '-pix_fmt', 'yuv420p', output_file
+            '-i', '-', '-an', 
+            '-c:v', 'h264_nvenc',
+            '-preset', 'p1',                 # Fastest preset
+            '-tune', 'll',                   # Low latency
+            '-rc', 'cbr',                    # Constant bitrate
+            '-b:v', '6M',                    # Lower bitrate for speed
+            '-pix_fmt', 'yuv420p', 
+            output_file
         ]
         
-        logging.info(f"Starting FFmpeg for segment {segment_idx}: {' '.join(ffmpeg_cmd)}")
+        logging.info(f"Starting FFmpeg for segment {segment_idx} with NVENC GPU encoding")
         
         ffmpeg_out = subprocess.Popen(
             ffmpeg_cmd,
             stdin=subprocess.PIPE, 
-            stderr=subprocess.PIPE,  # Capture stderr instead of DEVNULL
+            stderr=subprocess.PIPE,
             stdout=subprocess.PIPE
         )
+        
+        current_subtitle_text = ""
         
         # Generate frames
         for frame_idx in range(total_frames):
@@ -305,14 +486,53 @@ def process_image_segment(segment_info, progress_queue=None):
                 logging.warning(f"Empty composite frame at time {frame_time} in segment {segment_idx}")
                 composite_frame = np.zeros((HEIGHT, WIDTH, 3), dtype=np.uint8)
             
+            # Get subtitle for current time
+            current_subtitle = get_subtitle_for_time(subtitles, global_time)
+            subtitle_text = current_subtitle['text'] if current_subtitle else ""
+            
+            # Update subtitle texture if text changed
+            if subtitle_text != current_subtitle_text:
+                current_subtitle_text = subtitle_text
+                if subtitle_text:
+                    text_data, text_width, text_height = create_text_texture(subtitle_text)
+                    # Recreate texture with new dimensions
+                    subtitle_tex = ctx.texture((text_width, text_height), 4)
+                    subtitle_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+                    subtitle_tex.write(text_data.tobytes())
+                else:
+                    # Empty subtitle
+                    empty_data = np.zeros((64, 64, 4), dtype=np.uint8)
+                    subtitle_tex = ctx.texture((64, 64), 4)
+                    subtitle_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+                    subtitle_tex.write(empty_data.tobytes())
+                    text_width, text_height = 64, 64
+            
             # Upload frame to GPU
             tex.write(composite_frame.tobytes())
             
             # Render with shaders
             fbo.use()
             tex.use(0)
+            subtitle_tex.use(1)
             prog['tex'] = 0
-            prog['u_time'] = global_time  # Use global time for continuous effects
+            prog['subtitle_tex'] = 1
+            prog['u_time'] = global_time
+            
+            # Set subtitle properties
+            if subtitle_text:
+                # Position subtitle at bottom center
+                subtitle_scale_x = min(text_width / WIDTH * 0.8, 0.8)  # Max 80% of screen width
+                subtitle_scale_y = text_height / HEIGHT * subtitle_scale_x * (WIDTH / text_width)
+                subtitle_x = 0.5 - subtitle_scale_x / 2  # Center horizontally
+                subtitle_y = 0.85 - subtitle_scale_y    # Near bottom
+                
+                prog['subtitle_size'] = [subtitle_scale_x, subtitle_scale_y]
+                prog['subtitle_pos'] = [subtitle_x, subtitle_y]
+                prog['show_subtitle'] = 1.0
+            else:
+                prog['subtitle_size'] = [0.0, 0.0]
+                prog['subtitle_pos'] = [0.0, 0.0]
+                prog['show_subtitle'] = 0.0
             
             vao.render(moderngl.TRIANGLE_STRIP)
             
@@ -321,14 +541,13 @@ def process_image_segment(segment_info, progress_queue=None):
             
             # Check if FFmpeg process is still alive
             if ffmpeg_out.poll() is not None:
-                # FFmpeg has terminated
                 stderr_output = ffmpeg_out.stderr.read().decode('utf-8')
                 logging.error(f"FFmpeg terminated early in segment {segment_idx}: {stderr_output}")
                 break
             
             try:
                 ffmpeg_out.stdin.write(out_data)
-                ffmpeg_out.stdin.flush()  # Add flush to ensure data is sent
+                ffmpeg_out.stdin.flush()
             except BrokenPipeError as e:
                 stderr_output = ffmpeg_out.stderr.read().decode('utf-8')
                 logging.error(f"Broken pipe in segment {segment_idx} at frame {frame_idx}: {stderr_output}")
@@ -411,7 +630,7 @@ def progress_monitor(progress_queue, num_segments, segment_info_dict):
     
     completed_segments = set()
     timeout_count = 0
-    max_timeouts = 30  # 30 seconds without updates = timeout
+    max_timeouts = 10  # Reduce timeout to 10 seconds
     
     try:
         while len(completed_segments) < num_segments:
@@ -443,34 +662,66 @@ def progress_monitor(progress_queue, num_segments, segment_info_dict):
             except queue.Empty:
                 timeout_count += 1
                 if timeout_count >= max_timeouts:
-                    logging.warning("Progress monitor timed out - assuming all segments completed")
+                    logging.warning("Progress monitor timed out - forcing exit")
                     break
                 continue
             except Exception as e:
                 logging.warning(f"Progress monitor error: {e}")
                 continue
     
+    except KeyboardInterrupt:
+        logging.info("Progress monitor interrupted")
     finally:
+        # Force close all progress bars
         for pbar in progress_bars.values():
-            if not pbar.disable:
-                pbar.close()
+            try:
+                if not pbar.disable and hasattr(pbar, 'close'):
+                    pbar.close()
+            except:
+                pass
+        logging.info("Progress monitor cleanup completed")
 
 def concatenate_segments(processed_segments, final_output):
-    """Concatenate processed segments using FFmpeg"""
+    """Concatenate processed segments using FFmpeg with GPU acceleration"""
     with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
         concat_file = f.name
         for segment in sorted(processed_segments, key=lambda x: x['segment_index']):
             f.write(f"file '{segment['output_file']}'\n")
     
     try:
-        subprocess.run([
+        # Use GPU-accelerated concatenation
+        cmd = [
             'ffmpeg', '-y', '-f', 'concat', '-safe', '0',
             '-i', concat_file,
-            '-c', 'copy',
+            '-c:v', 'h264_nvenc',  # GPU encoding for concatenation
+            '-preset', 'p4',       # Balanced preset
+            '-rc', 'vbr',          # Variable bitrate
+            '-cq', '23',           # Quality
+            '-b:v', '8M',          # Target bitrate
+            '-maxrate', '12M',     # Max bitrate
+            '-bufsize', '16M',     # Buffer size
+            '-pix_fmt', 'yuv420p',
             final_output
-        ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ]
         
-        logging.info(f"Successfully concatenated segments to {final_output}")
+        logging.info("Concatenating with GPU acceleration...")
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        logging.info(f"✓ GPU concatenation successful: {final_output}")
+        
+    except subprocess.CalledProcessError as e:
+        # Fallback to copy mode (no re-encoding)
+        logging.warning("GPU concatenation failed, using copy mode")
+        try:
+            subprocess.run([
+                'ffmpeg', '-y', '-f', 'concat', '-safe', '0',
+                '-i', concat_file,
+                '-c', 'copy',  # Just copy, no re-encoding
+                final_output
+            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            logging.info(f"✓ Copy concatenation successful: {final_output}")
+        except subprocess.CalledProcessError as e2:
+            logging.error(f"Both GPU and copy concatenation failed: {e2}")
+            raise
         
     finally:
         os.unlink(concat_file)
@@ -526,11 +777,11 @@ def play_video_preview(video_file):
 
 def process_segment_wrapper(args):
     """Wrapper function for multiprocessing"""
-    segment_info, progress_queue = args
-    return process_image_segment(segment_info, progress_queue)
+    segment_info, subtitles, progress_queue = args
+    return process_image_segment(segment_info, subtitles, progress_queue)
 
 def main():
-    parser = argparse.ArgumentParser(description='Create video from project images with shader effects')
+    parser = argparse.ArgumentParser(description='Create video from project images with shader effects and subtitles')
     parser.add_argument('project_name', help='Name of the project folder')
     parser.add_argument('--preview', action='store_true', help='Create and preview first 10 seconds only')
     parser.add_argument('--output', help='Output video file path (default: project_name.mp4)')
@@ -541,8 +792,8 @@ def main():
     PREVIEW_MODE = args.preview
     
     try:
-        # Load project data
-        image_timeline, total_duration = load_project_data(args.project_name)
+        # Load project data including subtitles
+        image_timeline, total_duration, subtitles = load_project_data(args.project_name)
         
         if PREVIEW_MODE:
             total_duration = min(10.0, total_duration)
@@ -562,6 +813,8 @@ def main():
         
         logging.info(f"Creating video: {final_output}")
         logging.info(f"Duration: {total_duration:.2f}s")
+        logging.info(f"Subtitles: {len(subtitles)} entries")
+        logging.info(f"Max workers: {MAX_WORKERS}")
         
         # Create temporary directory for segments
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -569,54 +822,118 @@ def main():
             segments = create_image_video_segments(image_timeline, total_duration, temp_dir)
             logging.info(f"Created {len(segments)} segments")
             
-            # Create segment info dictionary
-            segment_info_dict = {segment['index']: segment for segment in segments}
+            processed_segments = []
+            failed_segments = []
             
-            # Process segments in parallel
-            with mp.Manager() as manager:
+            # Handle single vs multiple segments
+            if len(segments) == 1:
+                # Single segment - process with progress bar
+                segment = segments[0]
+                logging.info(f"Processing single segment with progress bar...")
+                
+                # Create a simple progress bar
+                total_frames = int(segment['duration'] * FRAME_RATE)
+                progress_bar = tqdm(
+                    total=total_frames,
+                    desc="Processing",
+                    unit="frame",
+                    dynamic_ncols=True
+                )
+                
+                # Custom progress tracking for single segment
+                class ProgressTracker:
+                    def __init__(self, pbar):
+                        self.pbar = pbar
+                        self.last_update = 0
+                    
+                    def update(self, current_frame):
+                        if current_frame > self.last_update:
+                            self.pbar.update(current_frame - self.last_update)
+                            self.last_update = current_frame
+                
+                tracker = ProgressTracker(progress_bar)
+                
+                # USE THE CORRECT FUNCTION WITH PROGRESS TRACKER
+                result = process_image_segment_with_progress(segment, subtitles, tracker)
+                progress_bar.close()
+                
+                if result['success']:
+                    processed_segments = [result]
+                    logging.info(f"✓ Segment completed successfully")
+                else:
+                    failed_segments = [result]
+                    logging.error(f"✗ Segment failed: {result.get('error', 'Unknown error')}")
+            
+            else:
+                # Multiple segments - use parallel processing with progress monitor
+                logging.info(f"Processing {len(segments)} segments with {MAX_WORKERS} workers...")
+                
+                # Use multiprocessing manager for shared queue
+                manager = mp.Manager()
                 progress_queue = manager.Queue()
                 
-                # Start progress monitor
-                progress_thread = threading.Thread(
+                # Create segment info dictionary
+                segment_info_dict = {segment['index']: segment for segment in segments}
+                
+                # Start progress monitor in a separate process (not thread)
+                progress_process = mp.Process(
                     target=progress_monitor,
                     args=(progress_queue, len(segments), segment_info_dict)
                 )
-                progress_thread.daemon = True
-                progress_thread.start()
+                progress_process.start()
                 
-                processed_segments = []
-                failed_segments = []
-                
-                # Process segments
-                with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
-                    future_to_segment = {
-                        executor.submit(process_segment_wrapper, (segment, progress_queue)): segment 
-                        for segment in segments
-                    }
+                try:
+                    # Process segments in parallel with enforced MAX_WORKERS
+                    with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                        logging.info(f"Starting {MAX_WORKERS} worker processes...")
+                        
+                        future_to_segment = {
+                            executor.submit(process_segment_wrapper, (segment, subtitles, progress_queue)): segment 
+                            for segment in segments
+                        }
+                        
+                        for future in as_completed(future_to_segment):
+                            segment = future_to_segment[future]
+                            try:
+                                result = future.result(timeout=3600)  # 1 hour timeout per segment
+                                if result['success']:
+                                    processed_segments.append(result)
+                                    logging.info(f"✓ Segment {result['segment_index']} completed successfully")
+                                else:
+                                    failed_segments.append(result)
+                                    logging.error(f"✗ Segment {result['segment_index']} failed: {result.get('error', 'Unknown error')}")
+                            except Exception as e:
+                                logging.error(f"Exception in segment processing: {e}")
+                                failed_segments.append({
+                                    'segment_index': segment['index'],
+                                    'error': str(e)
+                                })
                     
-                    for future in as_completed(future_to_segment):
-                        segment = future_to_segment[future]
-                        try:
-                            result = future.result()
-                            if result['success']:
-                                processed_segments.append(result)
-                                logging.info(f"✓ Segment {result['segment_index']} completed successfully")
-                            else:
-                                failed_segments.append(result)
-                                logging.error(f"✗ Segment {result['segment_index']} failed: {result.get('error', 'Unknown error')}")
-                        except Exception as e:
-                            logging.error(f"Exception in segment processing: {e}")
-                            failed_segments.append({
-                                'segment_index': segment['index'],
-                                'error': str(e)
-                            })
+                    # Signal progress monitor to stop
+                    try:
+                        progress_queue.put({'stop': True})
+                    except:
+                        pass
+                    
+                    # Wait for progress monitor to finish
+                    progress_process.join(timeout=5)
+                    if progress_process.is_alive():
+                        logging.warning("Force terminating progress monitor")
+                        progress_process.terminate()
+                        progress_process.join(timeout=2)
+                        if progress_process.is_alive():
+                            progress_process.kill()
                 
-                # Wait for progress monitor with timeout
-                progress_thread.join(timeout=10)
-                if progress_thread.is_alive():
-                    logging.warning("Progress monitor didn't finish - continuing anyway")
-            
-            print("\n" * (len(segments) + 2))
+                except Exception as e:
+                    logging.error(f"Error during parallel processing: {e}")
+                    # Ensure progress monitor is stopped
+                    if progress_process.is_alive():
+                        progress_process.terminate()
+                        progress_process.join()
+                
+                # Clear progress display
+                print("\n" * (len(segments) + 3))
+                logging.info("All segments processing completed")
             
             if failed_segments:
                 logging.error(f"Failed to process {len(failed_segments)} segments")
@@ -624,39 +941,252 @@ def main():
                     logging.error(f"  Segment {seg['segment_index']}: {seg.get('error', 'Unknown error')}")
                 return
             
-            # Concatenate segments
-            logging.info("Concatenating processed segments...")
-            concatenate_segments(processed_segments, final_output)
-            
-            # Clean up segment files
-            for segment in processed_segments:
+            # Handle concatenation or single segment
+            if len(processed_segments) == 1:
+                # Single segment - just copy/move the file
+                single_segment = processed_segments[0]
                 try:
-                    os.unlink(segment['output_file'])
-                    logging.info(f"Cleaned up {segment['output_file']}")
+                    import shutil
+                    shutil.move(single_segment['output_file'], final_output)
+                    logging.info(f"✓ Moved single segment to {final_output}")
                 except Exception as e:
-                    logging.warning(f"Failed to clean up {segment['output_file']}: {e}")
+                    logging.error(f"Failed to move single segment: {e}")
+                    return
+            else:
+                # Multiple segments - concatenate with GPU
+                logging.info("🔗 Concatenating processed segments with GPU...")
+                try:
+                    concatenate_segments(processed_segments, final_output)
+                    logging.info("✓ Concatenation completed successfully")
+                except Exception as e:
+                    logging.error(f"Concatenation failed: {e}")
+                    return
+                
+                # Clean up segment files
+                for segment in processed_segments:
+                    try:
+                        os.unlink(segment['output_file'])
+                        logging.info(f"🗑️ Cleaned up {segment['output_file']}")
+                    except Exception as e:
+                        logging.warning(f"Failed to clean up {segment['output_file']}: {e}")
             
-            logging.info(f"✓ Video created successfully: {final_output}")
+            logging.info(f"✅ Video created successfully: {final_output}")
             
             # Check if output file exists and show size
             if os.path.exists(final_output):
                 file_size = os.path.getsize(final_output) / (1024 * 1024)  # MB
-                logging.info(f"Output file size: {file_size:.2f} MB")
+                logging.info(f"📊 Output file size: {file_size:.2f} MB")
+                logging.info(f"📁 Video saved at: {final_output}")
+                
+                # FORCE PREVIEW TO START
+                if PREVIEW_MODE:
+                    logging.info("🎬 LAUNCHING VIDEO PREVIEW NOW...")
+                    play_video_preview(final_output)
+                else:
+                    logging.info(f"🎥 To preview the video, run: python {__file__} {args.project_name} --preview")
             else:
-                logging.error("Output file was not created!")
-            
-            # Play preview if requested
-            if PREVIEW_MODE:
-                play_video_preview(final_output)
+                logging.error("❌ Output file was not created!")
     
+    except KeyboardInterrupt:
+        logging.info("Process interrupted by user")
+        sys.exit(1)
     except Exception as e:
         logging.error(f"Failed to create video: {e}")
         import traceback
         logging.error(f"Traceback: {traceback.format_exc()}")
         sys.exit(1)
 
+def process_image_segment_with_progress(segment_info, subtitles, progress_tracker):
+    """Process segment with direct progress tracking for single segment mode"""
+    segment_idx = segment_info['index']
+    output_file = segment_info['output']
+    segment_duration = segment_info['duration']
+    segment_images = segment_info['images']
+    global_start_time = segment_info['start_time']
+    
+    total_frames = int(segment_duration * FRAME_RATE)
+    
+    try:
+        logging.info(f"Processing image segment {segment_idx}: {total_frames} frames")
+        logging.info(f"Segment {segment_idx} images: {[img['tag'] for img in segment_images]}")
+        
+        # Create OpenGL context
+        ctx = moderngl.create_standalone_context(backend='egl')
+        
+        # Load shaders
+        vertex_shader = load_shader_file("vertex.glsl")
+        fragment_shader = load_shader_file("fragment.glsl")
+        prog = ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
+        
+        # Create quad
+        quad = ctx.buffer(np.array([
+            -1.0, -1.0, 0.0, 0.0,
+             1.0, -1.0, 1.0, 0.0,
+            -1.0,  1.0, 0.0, 1.0,
+             1.0,  1.0, 1.0, 1.0,
+        ], dtype='f4'))
+        
+        vao = ctx.vertex_array(prog, [(quad, '2f 2f', 'in_vert', 'in_uv')])
+        
+        # Create textures and framebuffer
+        tex = ctx.texture((WIDTH, HEIGHT), 3)
+        tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        
+        # Create subtitle texture (will be updated per frame)
+        subtitle_tex = ctx.texture((64, 64), 4)  # Start with small texture
+        subtitle_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        
+        fbo = ctx.framebuffer(color_attachments=[ctx.texture((WIDTH, HEIGHT), 3)])
+        
+        # Setup FFmpeg output with NVIDIA GPU encoding
+        ffmpeg_cmd = [
+            'ffmpeg', '-y', '-f', 'rawvideo',
+            '-vcodec', 'rawvideo', '-pix_fmt', 'rgb24',
+            '-s', f'{WIDTH}x{HEIGHT}', '-r', str(FRAME_RATE),
+            '-i', '-', '-an', 
+            '-c:v', 'h264_nvenc',
+            '-preset', 'p1',                 # Fastest preset
+            '-tune', 'll',                   # Low latency
+            '-rc', 'cbr',                    # Constant bitrate
+            '-b:v', '6M',                    # Lower bitrate for speed
+            '-pix_fmt', 'yuv420p', 
+            output_file
+        ]
+        
+        logging.info(f"Starting FFmpeg for segment {segment_idx} with NVENC GPU encoding")
+        
+        ffmpeg_out = subprocess.Popen(
+            ffmpeg_cmd,
+            stdin=subprocess.PIPE, 
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE
+        )
+        
+        current_subtitle_text = ""
+        
+        # Generate frames
+        for frame_idx in range(total_frames):
+            frame_time = frame_idx / FRAME_RATE  # Time within this segment
+            global_time = global_start_time + frame_time  # Global video time
+            
+            # Generate composite frame from images
+            composite_frame = generate_composite_frame(segment_images, frame_time, global_start_time)
+            
+            # Validate composite frame
+            if composite_frame is None or composite_frame.size == 0:
+                logging.warning(f"Empty composite frame at time {frame_time} in segment {segment_idx}")
+                composite_frame = np.zeros((HEIGHT, WIDTH, 3), dtype=np.uint8)
+            
+            # Get subtitle for current time
+            current_subtitle = get_subtitle_for_time(subtitles, global_time)
+            subtitle_text = current_subtitle['text'] if current_subtitle else ""
+            
+            # Update subtitle texture if text changed
+            if subtitle_text != current_subtitle_text:
+                current_subtitle_text = subtitle_text
+                if subtitle_text:
+                    text_data, text_width, text_height = create_text_texture(subtitle_text)
+                    # Recreate texture with new dimensions
+                    subtitle_tex = ctx.texture((text_width, text_height), 4)
+                    subtitle_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+                    subtitle_tex.write(text_data.tobytes())
+                else:
+                    # Empty subtitle
+                    empty_data = np.zeros((64, 64, 4), dtype=np.uint8)
+                    subtitle_tex = ctx.texture((64, 64), 4)
+                    subtitle_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+                    subtitle_tex.write(empty_data.tobytes())
+                    text_width, text_height = 64, 64
+            
+            # Upload frame to GPU
+            tex.write(composite_frame.tobytes())
+            
+            # Render with shaders
+            fbo.use()
+            tex.use(0)
+            subtitle_tex.use(1)
+            prog['tex'] = 0
+            prog['subtitle_tex'] = 1
+            prog['u_time'] = global_time
+            
+            # Set subtitle properties
+            if subtitle_text:
+                # Position subtitle at bottom center
+                subtitle_scale_x = min(text_width / WIDTH * 0.8, 0.8)  # Max 80% of screen width
+                subtitle_scale_y = text_height / HEIGHT * subtitle_scale_x * (WIDTH / text_width)
+                subtitle_x = 0.5 - subtitle_scale_x / 2  # Center horizontally
+                subtitle_y = 0.85 - subtitle_scale_y    # Near bottom
+                
+                prog['subtitle_size'] = [subtitle_scale_x, subtitle_scale_y]
+                prog['subtitle_pos'] = [subtitle_x, subtitle_y]
+                prog['show_subtitle'] = 1.0
+            else:
+                prog['subtitle_size'] = [0.0, 0.0]
+                prog['subtitle_pos'] = [0.0, 0.0]
+                prog['show_subtitle'] = 0.0
+            
+            vao.render(moderngl.TRIANGLE_STRIP)
+            
+            # Read processed frame
+            out_data = fbo.read(components=3, alignment=1)
+            
+            # Check if FFmpeg process is still alive
+            if ffmpeg_out.poll() is not None:
+                stderr_output = ffmpeg_out.stderr.read().decode('utf-8')
+                logging.error(f"FFmpeg terminated early in segment {segment_idx}: {stderr_output}")
+                break
+            
+            try:
+                ffmpeg_out.stdin.write(out_data)
+                ffmpeg_out.stdin.flush()
+            except BrokenPipeError as e:
+                stderr_output = ffmpeg_out.stderr.read().decode('utf-8')
+                logging.error(f"Broken pipe in segment {segment_idx} at frame {frame_idx}: {stderr_output}")
+                break
+            
+            # Update progress
+            progress_tracker.update(frame_idx + 1)
+            
+            # Check VRAM usage
+            gpu_usage = get_gpu_memory_usage()
+            if gpu_usage >= VRAM_THRESHOLD:
+                logging.error(f"⚠️ VRAM threshold exceeded in segment {segment_idx}")
+                break
+        
+        # Clean up
+        ffmpeg_out.stdin.close()
+        return_code = ffmpeg_out.wait()
+        
+        # Check FFmpeg return code
+        if return_code != 0:
+            stderr_output = ffmpeg_out.stderr.read().decode('utf-8')
+            logging.error(f"FFmpeg failed for segment {segment_idx} with return code {return_code}: {stderr_output}")
+            return {
+                'success': False,
+                'segment_index': segment_idx,
+                'error': f"FFmpeg failed: {stderr_output}"
+            }
+        
+        logging.info(f"Completed image segment {segment_idx}")
+        return {
+            'success': True,
+            'segment_index': segment_idx,
+            'output_file': output_file,
+            'frames_processed': total_frames
+        }
+        
+    except Exception as e:
+        logging.error(f"Error processing image segment {segment_idx}: {e}")
+        import traceback
+        logging.error(f"Traceback: {traceback.format_exc()}")
+        return {
+            'success': False,
+            'segment_index': segment_idx,
+            'error': str(e)
+        }
+
 if __name__ == '__main__':
     start_time = time.time()
     main()
     end_time = time.time()
-    logging.info(f"Program completed in {end_time - start_time:.2f} seconds.")
+    logging.info(f"🏁 Program completed in {end_time - start_time:.2f} seconds.")

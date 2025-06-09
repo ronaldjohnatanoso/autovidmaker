@@ -1,8 +1,12 @@
 #version 330
-uniform sampler2D tex;        // The image texture
-uniform float u_time;         // Time for animations
-in vec2 uv;                   // UV coordinates from vertex shader
-out vec4 color;               // Final pixel color
+uniform sampler2D tex;           // The image texture
+uniform sampler2D subtitle_tex;  // The subtitle texture
+uniform float u_time;            // Time for animations
+uniform vec2 subtitle_size;      // Size of the subtitle texture
+uniform vec2 subtitle_pos;       // Position of the subtitle
+uniform float show_subtitle;     // Whether to show subtitle (0.0 or 1.0)
+in vec2 uv;                      // UV coordinates from vertex shader
+out vec4 color;                  // Final pixel color
 
 // ============================================================================
 // INDEPENDENT EFFECT MODULES
@@ -50,6 +54,28 @@ vec3 effect_desaturate(vec3 input_color, float amount) {
     return mix(input_color, vec3(gray), amount);
 }
 
+/**
+ * SUBTITLE OVERLAY MODULE - Renders subtitles with alpha blending
+ */
+vec3 add_subtitle_overlay(vec3 base_color, vec2 uv_coords) {
+    if (show_subtitle < 0.5 || subtitle_size.x <= 0.0 || subtitle_size.y <= 0.0) {
+        return base_color;
+    }
+    
+    // Calculate UV coordinates for the subtitle
+    vec2 subtitle_uv = (uv_coords - subtitle_pos) / subtitle_size;
+    
+    // Check if we're within the subtitle area
+    if (subtitle_uv.x >= 0.0 && subtitle_uv.x <= 1.0 && subtitle_uv.y >= 0.0 && subtitle_uv.y <= 1.0) {
+        vec4 subtitle_sample = texture(subtitle_tex, subtitle_uv);
+        
+        // Blend subtitle over the base image using subtitle alpha
+        return mix(base_color, subtitle_sample.rgb, subtitle_sample.a);
+    }
+    
+    return base_color;
+}
+
 // ============================================================================
 // MAIN FUNCTION
 // ============================================================================
@@ -68,6 +94,9 @@ void main() {
     working_color = effect_scanlines(working_color, uv, u_time);
     working_color = effect_vignette(working_color, uv);
     working_color = effect_desaturate(working_color, 0.1);
+    
+    // Add subtitle overlay
+    working_color = add_subtitle_overlay(working_color, uv);
     
     // Output final result
     color = vec4(working_color, base_texture.a);
