@@ -14,6 +14,11 @@ from pathlib import Path
 from tqdm import tqdm
 import threading
 import queue
+import PIL.Image
+import PIL.ImageDraw
+import PIL.ImageFont
+import cv2
+import argparse
 
 # Configure logging
 logging.basicConfig(
@@ -26,26 +31,91 @@ WIDTH = 1920
 HEIGHT = 1080
 FRAME_RATE = 30
 VRAM_THRESHOLD = 0.95  # 95%
-SEGMENT_DURATION = 30  # seconds per segment
-MAX_WORKERS = 5  # Leave one core free
+SEGMENT_DURATION = 20  # seconds per segment
+MAX_WORKERS = 6  # Leave one core free
 
-# Define pulsing red shader
+# Preview mode constant
+PREVIEW_MODE = True
+
+# Updated shader with font texture support
 FRAGMENT_SHADER = '''
 #version 330
 uniform sampler2D tex;
+uniform sampler2D font_tex;
 uniform float u_time;
+uniform vec2 font_size;
+uniform vec2 text_pos;
 in vec2 uv;
 out vec4 color;
 
 void main() {
-    vec4 c = texture(tex, uv);
+    // Fast rotation effect
+    float rotation_speed = 3.0; // Adjust for faster/slower rotation
+    float angle = u_time * rotation_speed;
     
-    // Create a pulsing effect using sine wave
-    float pulse = sin(u_time * 3.14159) * 0.5 + 0.5;
+    // Rotate around center
+    vec2 center = vec2(0.5, 0.5);
+    vec2 centered_uv = uv - center;
     
-    // Apply red overlay
-    vec3 red_overlay = vec3(pulse, 0.0, 0.0);
-    vec3 result = mix(c.rgb, c.rgb + red_overlay, 0.3);
+    // Rotation matrix
+    float cos_a = cos(angle);
+    float sin_a = sin(angle);
+    vec2 rotated_uv = vec2(
+        centered_uv.x * cos_a - centered_uv.y * sin_a,
+        centered_uv.x * sin_a + centered_uv.y * cos_a
+    ) + center;
+    
+    // Create fast zooming effect on the rotated coordinates
+    float zoom_speed = 2.0;
+    float zoom_factor = 1.0 + sin(u_time * zoom_speed) * 0.3;
+    
+    vec2 zoom_uv = center + (rotated_uv - center) / zoom_factor;
+    
+    vec4 c = texture(tex, zoom_uv);
+    
+    // Add noise and effects
+    float noise = sin(uv.y * 1200.0 + u_time * 10.0) * 0.02;
+    vec2 vignette_center = uv - 0.5;
+    float vignette = 1.0 - dot(vignette_center, vignette_center) * 0.9;
+    
+    vec3 result = c.rgb;
+    result += noise;
+    result *= vignette;
+    
+    float gray = dot(result, vec3(0.299, 0.587, 0.114));
+    result = mix(result, vec3(gray), 0.1);
+    
+    // Add text overlay with stroke effect
+    vec2 text_uv = (uv - text_pos) / font_size;
+    
+    if (text_uv.x >= 0.0 && text_uv.x <= 1.0 && text_uv.y >= 0.0 && text_uv.y <= 1.0) {
+        vec4 text_sample = texture(font_tex, text_uv);
+        
+        // Create stroke by sampling surrounding pixels
+        float stroke_width = 0.003;
+        vec2 texel_size = 1.0 / textureSize(font_tex, 0);
+        
+        float stroke = 0.0;
+        for(int x = -2; x <= 2; x++) {
+            for(int y = -2; y <= 2; y++) {
+                if(x == 0 && y == 0) continue;
+                vec2 offset = vec2(float(x), float(y)) * texel_size * 2.0;
+                stroke = max(stroke, texture(font_tex, text_uv + offset).a);
+            }
+        }
+        
+        // White text with black stroke
+        vec3 text_color = vec3(1.0, 1.0, 1.0); // White
+        vec3 stroke_color = vec3(0.0, 0.0, 0.0); // Black
+        
+        // Apply glow effect
+        float glow = 1.0 + sin(u_time * 4.0) * 0.2;
+        text_color *= glow;
+        
+        // Blend stroke first, then text
+        result = mix(result, stroke_color, stroke * 0.8);
+        result = mix(result, text_color, text_sample.a * 0.9);
+    }
     
     color = vec4(result, c.a);
 }
@@ -170,6 +240,66 @@ def get_segment_frame_count(input_file):
         duration, fps, _ = get_video_info(input_file)
         return int(duration * fps)
 
+def generate_font_texture(text="DINOSAUR", font_size=120):
+    """Generate a texture atlas for the given text with better quality."""
+    try:
+        # Try to find a good system font
+        font_paths = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 
+            "/usr/share/fonts/truetype/ubuntu/Ubuntu-Bold.ttf",
+            "/System/Library/Fonts/Arial.ttf",  # macOS
+            "C:/Windows/Fonts/arial.ttf"  # Windows
+        ]
+        
+        font = None
+        for font_path in font_paths:
+            if os.path.exists(font_path):
+                try:
+                    font = PIL.ImageFont.truetype(font_path, font_size)
+                    logging.info(f"Using font: {font_path}")
+                    break
+                except:
+                    continue
+        
+        if font is None:
+            font = PIL.ImageFont.load_default()
+            logging.warning("Using default font")
+        
+        # Calculate text dimensions with extra padding for stroke
+        bbox = font.getbbox(text)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        
+        # Create image with generous padding for stroke effect
+        padding = 40
+        img_width = text_width + padding * 2
+        img_height = text_height + padding * 2
+        
+        # Create high-resolution image for better quality
+        scale = 2  # 2x supersample
+        img = PIL.Image.new('RGBA', (img_width * scale, img_height * scale), (0, 0, 0, 0))
+        draw = PIL.ImageDraw.Draw(img)
+        
+        # Draw text at scaled position
+        scaled_font = PIL.ImageFont.truetype(font.path, font_size * scale) if hasattr(font, 'path') else font
+        draw.text((padding * scale, padding * scale), text, font=scaled_font, fill=(255, 255, 255, 255))
+        
+        # Downscale for final texture
+        img = img.resize((img_width, img_height), PIL.Image.LANCZOS)
+        
+        # Convert to numpy array
+        img_array = np.array(img)
+        return img_array, img_width, img_height
+        
+    except Exception as e:
+        logging.warning(f"Font texture generation failed: {e}")
+        # Return a simple fallback texture
+        fallback = np.zeros((128, 512, 4), dtype=np.uint8)
+        # Create simple white rectangle as fallback
+        fallback[40:88, 50:462, :] = [255, 255, 255, 255]
+        return fallback, 512, 128
+
 def process_segment(segment_info, progress_queue=None):
     """Process a single video segment with individual progress tracking."""
     input_file = segment_info['input']
@@ -189,6 +319,18 @@ def process_segment(segment_info, progress_queue=None):
         
         prog = ctx.program(vertex_shader=VERTEX_SHADER, fragment_shader=FRAGMENT_SHADER)
         prog['u_time'] = 0.0
+        
+        # Generate font texture
+        font_data, font_width, font_height = generate_font_texture("DINOSAUR")
+        
+        # Create font texture
+        font_tex = ctx.texture((font_width, font_height), 4)  # RGBA
+        font_tex.write(font_data.tobytes())
+        font_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
+        
+        # Set font uniforms
+        prog['font_size'] = [font_width / WIDTH * 0.6, font_height / HEIGHT * 0.6]  # Scale down text
+        prog['text_pos'] = [0.5 - (font_width / WIDTH * 0.6) / 2, 0.5 - (font_height / HEIGHT * 0.6) / 2]  # Center text
         
         quad = ctx.buffer(np.array([
             -1.0, -1.0, 0.0, 0.0,
@@ -239,15 +381,20 @@ def process_segment(segment_info, progress_queue=None):
             frame = np.frombuffer(raw_frame, dtype=np.uint8).reshape((HEIGHT, WIDTH, 3))
             tex.write(frame.tobytes())
             fbo.use()
+            
+            # Bind both textures
             tex.use(0)
+            font_tex.use(1)
             prog['tex'] = 0
+            prog['font_tex'] = 1
             prog['u_time'] = (start_time + frame_count / fps)
+            
             vao.render(moderngl.TRIANGLE_STRIP)
             
             out_data = fbo.read(components=3, alignment=1)
             ffmpeg_out.stdin.write(out_data)
             
-            # Update progress (use try-except for safety)
+            # Update progress
             if progress_queue:
                 try:
                     progress_queue.put({
@@ -255,8 +402,7 @@ def process_segment(segment_info, progress_queue=None):
                         'frames_processed': frame_count + 1,
                         'total_frames': total_frames
                     })
-                except Exception as e:
-                    # If queue fails, continue without progress updates
+                except Exception:
                     pass
             
             # Check VRAM usage
@@ -341,7 +487,7 @@ def progress_monitor(progress_queue, num_segments, segment_info_dict):
                     completed_segments.add(segment_idx)
                 elif 'frames_processed' in update:
                     frames_processed = update['frames_processed']
-                    total_frames = update.get('total_frames', progress_bars[segment_idx].total)
+                    total_frames = update.get('total_frames', progress_bars[segment_idx].total);
                     
                     # Update progress bar
                     current_pos = progress_bars[segment_idx].n
@@ -392,14 +538,108 @@ def concatenate_segments(processed_segments, final_output):
     finally:
         os.unlink(concat_file)
 
-def main():
-    input_file = "input.mp4"
-    final_output = "output.mp4"
+def preview_mode_process(input_file):
+    """Process and play only the first segment for preview."""
+    global PREVIEW_MODE
+    PREVIEW_MODE = True
     
     if not os.path.exists(input_file):
         logging.error(f"Input file {input_file} not found")
         return
     
+    # Get video properties
+    duration, fps, total_frames = get_video_info(input_file)
+    logging.info(f"Preview mode: Processing first {SEGMENT_DURATION}s of video")
+    
+    # Create temporary directory for preview segment
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create only the first segment
+        segments, actual_fps = create_segments(input_file, temp_dir, SEGMENT_DURATION)
+        first_segment = segments[0]
+        
+        logging.info(f"Processing preview segment ({get_segment_frame_count(first_segment['input'])} frames)")
+        
+        # Process the first segment
+        result = process_segment(first_segment)
+        
+        if not result['success']:
+            logging.error(f"Failed to process preview segment: {result.get('error', 'Unknown error')}")
+            return
+        
+        # Play the processed video
+        play_video_preview(result['output_file'])
+
+def play_video_preview(video_file):
+    """Play the processed video using OpenCV in a simple GUI."""
+    try:
+        cap = cv2.VideoCapture(video_file)
+        
+        if not cap.isOpened():
+            logging.error("Failed to open processed video")
+            return
+        
+        # Get video properties
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_delay = 1.0 / fps
+        
+        # Create window
+        cv2.namedWindow('Preview - DINOSAUR Effect', cv2.WINDOW_AUTOSIZE)
+        
+        logging.info("Playing preview... Press 'q' or ESC to quit, SPACE to restart")
+        
+        while True:
+            start_time = time.time()
+            
+            ret, frame = cap.read()
+            if not ret:
+                # Video ended, restart from beginning
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                continue
+            
+            # Resize frame to fit screen better (optional)
+            height, width = frame.shape[:2]
+            if width > 1200:  # Scale down if too large
+                scale = 1200 / width
+                new_width = int(width * scale)
+                new_height = int(height * scale)
+                frame = cv2.resize(frame, (new_width, new_height))
+            
+            cv2.imshow('Preview - DINOSAUR Effect', frame)
+            
+            # Handle key presses
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q') or key == 27:  # 'q' or ESC
+                break
+            elif key == ord(' '):  # SPACE to restart
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                continue
+            
+            # Maintain proper frame rate
+            elapsed = time.time() - start_time
+            if elapsed < frame_delay:
+                time.sleep(frame_delay - elapsed)
+        
+        cap.release()
+        cv2.destroyAllWindows()
+        logging.info("Preview ended")
+        
+    except Exception as e:
+        logging.error(f"Error playing preview: {e}")
+
+def main():
+    input_file = 'input.mp4'
+    final_output = 'output.mp4'
+    
+    if not os.path.exists(input_file):
+        logging.error(f"Input file {input_file} not found")
+        return
+    
+    # Check if preview mode based on constant
+    if PREVIEW_MODE:
+        preview_mode_process(input_file)
+        return
+    
+    # Regular processing mode (existing code)
     # Get actual video properties
     duration, fps, total_frames = get_video_info(input_file)
     logging.info(f"Input video: {duration:.2f}s, {fps:.2f}fps, {total_frames} frames")
@@ -478,7 +718,6 @@ def main():
                 pass
 
 if __name__ == '__main__':
-    logging.info("Starting parallel video processing with individual segment progress.")
     start_time = time.time()
     main()
     end_time = time.time()
