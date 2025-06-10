@@ -20,6 +20,15 @@ import cv2
 import tempfile
 import multiprocessing as mp
 import re
+import signal
+import atexit
+import weakref
+
+# Global cleanup tracking
+active_processes = []
+active_contexts = []
+active_executors = []  # Add this to track executors
+active_multiprocessing_processes = []  # Add this to track MP processes
 
 # Configure logging
 logging.basicConfig(
@@ -34,10 +43,106 @@ HEIGHT = 1080
 FRAME_RATE = 30
 VRAM_THRESHOLD = 0.95
 SEGMENT_DURATION = 20
-MAX_WORKERS = 6  # Reduce this for your RTX 3050 - too many parallel processes can cause issues
+MAX_WORKERS = 6
+SUBTITLE_FONT_SIZE = 64 * 2  # Add this line
 
 # Set to True to only process and preview first 10 seconds
 PREVIEW_MODE = False
+
+def cleanup_processes():
+    """Clean up all active processes"""
+    global active_processes, active_executors, active_multiprocessing_processes
+    logging.info("Cleaning up active processes...")
+    
+    # Clean up ProcessPoolExecutor processes
+    for executor in active_executors[:]:
+        try:
+            logging.info("Shutting down executor...")
+            executor.shutdown(wait=False, cancel_futures=True)
+            active_executors.remove(executor)
+        except Exception as e:
+            logging.warning(f"Error shutting down executor: {e}")
+    
+    # Clean up multiprocessing processes
+    for proc in active_multiprocessing_processes[:]:
+        try:
+            if proc.is_alive():
+                logging.info(f"Terminating multiprocessing process {proc.pid}")
+                proc.terminate()
+                proc.join(timeout=3)
+                if proc.is_alive():
+                    logging.warning(f"Force killing multiprocessing process {proc.pid}")
+                    proc.kill()
+                    proc.join()
+            active_multiprocessing_processes.remove(proc)
+        except Exception as e:
+            logging.warning(f"Error cleaning up multiprocessing process: {e}")
+    
+    # Clean up FFmpeg processes
+    for proc in active_processes[:]:
+        try:
+            if proc.poll() is None:
+                logging.info(f"Terminating FFmpeg process {proc.pid}")
+                proc.terminate()
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    logging.warning(f"Force killing FFmpeg process {proc.pid}")
+                    proc.kill()
+                    proc.wait()
+            active_processes.remove(proc)
+        except Exception as e:
+            logging.warning(f"Error cleaning up FFmpeg process: {e}")
+
+def cleanup_contexts():
+    """Clean up OpenGL contexts"""
+    global active_contexts
+    for ctx_ref in active_contexts[:]:
+        try:
+            ctx = ctx_ref()
+            if ctx:
+                ctx.release()
+        except:
+            pass
+    active_contexts.clear()
+
+def signal_handler(signum, frame):
+    """Handle interrupt signals"""
+    logging.info(f"Received signal {signum}, cleaning up...")
+    cleanup_processes()
+    cleanup_contexts()
+    
+    # Force kill any remaining Python processes
+    if psutil:
+        try:
+            current_process = psutil.Process()
+            children = current_process.children(recursive=True)
+            for child in children:
+                try:
+                    logging.info(f"Force terminating child process {child.pid}")
+                    child.terminate()
+                except:
+                    pass
+            
+            # Wait a bit then kill remaining
+            time.sleep(2)
+            for child in children:
+                try:
+                    if child.is_running():
+                        logging.info(f"Force killing child process {child.pid}")
+                        child.kill()
+                except:
+                    pass
+        except Exception as e:
+            logging.warning(f"Error during process cleanup: {e}")
+    
+    sys.exit(1)
+
+# Register cleanup handlers
+atexit.register(cleanup_processes)
+atexit.register(cleanup_contexts)
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 def parse_srt_file(srt_path):
     """Parse SRT subtitle file and return list of subtitle entries"""
@@ -407,6 +512,8 @@ def get_gpu_memory_usage():
 
 def process_image_segment(segment_info, subtitles, progress_queue=None):
     """Process one video segment with shader effects applied to image timeline"""
+    global active_processes, active_contexts
+    
     segment_idx = segment_info['index']
     output_file = segment_info['output']
     segment_duration = segment_info['duration']
@@ -415,12 +522,16 @@ def process_image_segment(segment_info, subtitles, progress_queue=None):
     
     total_frames = int(segment_duration * FRAME_RATE)
     
+    ctx = None
+    ffmpeg_out = None
+    
     try:
         logging.info(f"Processing image segment {segment_idx}: {total_frames} frames")
         logging.info(f"Segment {segment_idx} images: {[img['tag'] for img in segment_images]}")
         
         # Create OpenGL context
         ctx = moderngl.create_standalone_context(backend='egl')
+        active_contexts.append(weakref.ref(ctx))
         
         # Load shaders
         vertex_shader = load_shader_file("vertex.glsl")
@@ -471,10 +582,20 @@ def process_image_segment(segment_info, subtitles, progress_queue=None):
             stdout=subprocess.PIPE
         )
         
+        # Track the process for cleanup
+        active_processes.append(ffmpeg_out)
+        
         current_subtitle_text = ""
         
         # Generate frames
         for frame_idx in range(total_frames):
+            # Check for interruption
+            if frame_idx % 30 == 0:  # Check every 30 frames
+                if ffmpeg_out.poll() is not None:
+                    stderr_output = ffmpeg_out.stderr.read().decode('utf-8')
+                    logging.error(f"FFmpeg terminated early in segment {segment_idx}: {stderr_output}")
+                    break
+            
             frame_time = frame_idx / FRAME_RATE  # Time within this segment
             global_time = global_start_time + frame_time  # Global video time
             
@@ -494,7 +615,7 @@ def process_image_segment(segment_info, subtitles, progress_queue=None):
             if subtitle_text != current_subtitle_text:
                 current_subtitle_text = subtitle_text
                 if subtitle_text:
-                    text_data, text_width, text_height = create_text_texture(subtitle_text)
+                    text_data, text_width, text_height = create_text_texture(subtitle_text, font_size=SUBTITLE_FONT_SIZE)
                     # Recreate texture with new dimensions
                     subtitle_tex = ctx.texture((text_width, text_height), 4)
                     subtitle_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
@@ -539,18 +660,15 @@ def process_image_segment(segment_info, subtitles, progress_queue=None):
             # Read processed frame
             out_data = fbo.read(components=3, alignment=1)
             
-            # Check if FFmpeg process is still alive
-            if ffmpeg_out.poll() is not None:
-                stderr_output = ffmpeg_out.stderr.read().decode('utf-8')
-                logging.error(f"FFmpeg terminated early in segment {segment_idx}: {stderr_output}")
-                break
-            
             try:
                 ffmpeg_out.stdin.write(out_data)
                 ffmpeg_out.stdin.flush()
             except BrokenPipeError as e:
                 stderr_output = ffmpeg_out.stderr.read().decode('utf-8')
                 logging.error(f"Broken pipe in segment {segment_idx} at frame {frame_idx}: {stderr_output}")
+                break
+            except Exception as e:
+                logging.error(f"Error writing to FFmpeg: {e}")
                 break
             
             # Update progress
@@ -570,13 +688,34 @@ def process_image_segment(segment_info, subtitles, progress_queue=None):
                 logging.error(f"⚠️ VRAM threshold exceeded in segment {segment_idx}")
                 break
         
-        # Clean up
-        ffmpeg_out.stdin.close()
-        return_code = ffmpeg_out.wait()
+        # Clean up FFmpeg
+        if ffmpeg_out:
+            try:
+                ffmpeg_out.stdin.close()
+                return_code = ffmpeg_out.wait(timeout=30)  # 30 second timeout
+            except subprocess.TimeoutExpired:
+                logging.warning(f"FFmpeg timeout for segment {segment_idx}, terminating")
+                ffmpeg_out.terminate()
+                try:
+                    ffmpeg_out.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    ffmpeg_out.kill()
+                return_code = -1
+            
+            # Remove from active processes
+            if ffmpeg_out in active_processes:
+                active_processes.remove(ffmpeg_out)
+        
+        # Clean up OpenGL context
+        if ctx:
+            try:
+                ctx.release()
+            except:
+                pass
         
         # Check FFmpeg return code
         if return_code != 0:
-            stderr_output = ffmpeg_out.stderr.read().decode('utf-8')
+            stderr_output = ffmpeg_out.stderr.read().decode('utf-8') if ffmpeg_out else ""
             logging.error(f"FFmpeg failed for segment {segment_idx} with return code {return_code}: {stderr_output}")
             return {
                 'success': False,
@@ -602,6 +741,9 @@ def process_image_segment(segment_info, subtitles, progress_queue=None):
             'frames_processed': total_frames
         }
         
+    except KeyboardInterrupt:
+        logging.info(f"Segment {segment_idx} interrupted by user")
+        raise
     except Exception as e:
         logging.error(f"Error processing image segment {segment_idx}: {e}")
         import traceback
@@ -611,6 +753,22 @@ def process_image_segment(segment_info, subtitles, progress_queue=None):
             'segment_index': segment_idx,
             'error': str(e)
         }
+    finally:
+        # Ensure cleanup happens even on exception
+        if ffmpeg_out and ffmpeg_out in active_processes:
+            try:
+                if ffmpeg_out.poll() is None:
+                    ffmpeg_out.terminate()
+                    ffmpeg_out.wait(timeout=5)
+                active_processes.remove(ffmpeg_out)
+            except:
+                pass
+        
+        if ctx:
+            try:
+                ctx.release()
+            except:
+                pass
 
 def progress_monitor(progress_queue, num_segments, segment_info_dict):
     """Monitor progress for all segments with timeout"""
@@ -783,55 +941,63 @@ def process_segment_wrapper(args):
 def main():
     parser = argparse.ArgumentParser(description='Create video from project images with shader effects and subtitles')
     parser.add_argument('project_name', help='Name of the project folder')
-    parser.add_argument('--preview', action='store_true', help='Create and preview first 10 seconds only')
+    parser.add_argument('--preview', action='store_true', help='Create and preview first segment only')
     parser.add_argument('--output', help='Output video file path (default: project_name.mp4)')
     
     args = parser.parse_args()
     
-    global PREVIEW_MODE
+    global PREVIEW_MODE, active_executors, active_multiprocessing_processes
     PREVIEW_MODE = args.preview
     
     try:
         # Load project data including subtitles
         image_timeline, total_duration, subtitles = load_project_data(args.project_name)
         
-        if PREVIEW_MODE:
-            total_duration = min(10.0, total_duration)
-            # Filter timeline for preview
-            image_timeline = [img for img in image_timeline if img['start_time'] < total_duration]
-            for img in image_timeline:
-                img['end_time'] = min(img['end_time'], total_duration)
-        
-        # Set output file
-        if args.output:
-            final_output = args.output
-        else:
-            script_dir = Path(__file__).parent
-            project_dir = script_dir.parent / "0-project-files" / args.project_name
-            suffix = "_preview" if PREVIEW_MODE else ""
-            final_output = str(project_dir / f"{args.project_name}{suffix}.mp4")
-        
-        logging.info(f"Creating video: {final_output}")
-        logging.info(f"Duration: {total_duration:.2f}s")
-        logging.info(f"Subtitles: {len(subtitles)} entries")
-        logging.info(f"Max workers: {MAX_WORKERS}")
-        
-        # Create temporary directory for segments
+        # Create segments FIRST to determine preview duration
         with tempfile.TemporaryDirectory() as temp_dir:
             # Create segments from image timeline
             segments = create_image_video_segments(image_timeline, total_duration, temp_dir)
             logging.info(f"Created {len(segments)} segments")
+            
+            if PREVIEW_MODE:
+                # Use first segment duration for preview
+                first_segment = segments[0]
+                preview_duration = first_segment['duration']
+                total_duration = preview_duration
+                
+                # Filter timeline for preview (first segment only)
+                image_timeline = [img for img in image_timeline if img['start_time'] < preview_duration]
+                for img in image_timeline:
+                    img['end_time'] = min(img['end_time'], preview_duration)
+                
+                # Keep only the first segment
+                segments = [first_segment]
+                
+                logging.info(f"Preview mode: Using first segment duration of {preview_duration:.2f}s")
+        
+            # Set output file
+            if args.output:
+                final_output = args.output
+            else:
+                script_dir = Path(__file__).parent
+                project_dir = script_dir.parent / "0-project-files" / args.project_name
+                suffix = "_preview" if PREVIEW_MODE else ""
+                final_output = str(project_dir / f"{args.project_name}{suffix}.mp4")
+            
+            logging.info(f"Creating video: {final_output}")
+            logging.info(f"Duration: {total_duration:.2f}s")
+            logging.info(f"Subtitles: {len(subtitles)} entries")
+            logging.info(f"Max workers: {MAX_WORKERS}")
             
             processed_segments = []
             failed_segments = []
             
             # Handle single vs multiple segments
             if len(segments) == 1:
-                # Single segment - process with progress bar
+                # Single segment processing (no changes needed here)
                 segment = segments[0]
                 logging.info(f"Processing single segment with progress bar...")
                 
-                # Create a simple progress bar
                 total_frames = int(segment['duration'] * FRAME_RATE)
                 progress_bar = tqdm(
                     total=total_frames,
@@ -840,7 +1006,6 @@ def main():
                     dynamic_ncols=True
                 )
                 
-                # Custom progress tracking for single segment
                 class ProgressTracker:
                     def __init__(self, pbar):
                         self.pbar = pbar
@@ -853,7 +1018,6 @@ def main():
                 
                 tracker = ProgressTracker(progress_bar)
                 
-                # USE THE CORRECT FUNCTION WITH PROGRESS TRACKER
                 result = process_image_segment_with_progress(segment, subtitles, tracker)
                 progress_bar.close()
                 
@@ -863,9 +1027,8 @@ def main():
                 else:
                     failed_segments = [result]
                     logging.error(f"✗ Segment failed: {result.get('error', 'Unknown error')}")
-            
             else:
-                # Multiple segments - use parallel processing with progress monitor
+                # Multiple segments - use parallel processing with better cleanup
                 logging.info(f"Processing {len(segments)} segments with {MAX_WORKERS} workers...")
                 
                 # Use multiprocessing manager for shared queue
@@ -875,61 +1038,74 @@ def main():
                 # Create segment info dictionary
                 segment_info_dict = {segment['index']: segment for segment in segments}
                 
-                # Start progress monitor in a separate process (not thread)
+                # Start progress monitor in a separate process
                 progress_process = mp.Process(
                     target=progress_monitor,
                     args=(progress_queue, len(segments), segment_info_dict)
                 )
                 progress_process.start()
+                active_multiprocessing_processes.append(progress_process)  # Track it
                 
+                executor = None
                 try:
                     # Process segments in parallel with enforced MAX_WORKERS
-                    with ProcessPoolExecutor(max_workers=MAX_WORKERS) as executor:
-                        logging.info(f"Starting {MAX_WORKERS} worker processes...")
-                        
-                        future_to_segment = {
-                            executor.submit(process_segment_wrapper, (segment, subtitles, progress_queue)): segment 
-                            for segment in segments
-                        }
-                        
-                        for future in as_completed(future_to_segment):
-                            segment = future_to_segment[future]
-                            try:
-                                result = future.result(timeout=3600)  # 1 hour timeout per segment
-                                if result['success']:
-                                    processed_segments.append(result)
-                                    logging.info(f"✓ Segment {result['segment_index']} completed successfully")
-                                else:
-                                    failed_segments.append(result)
-                                    logging.error(f"✗ Segment {result['segment_index']} failed: {result.get('error', 'Unknown error')}")
-                            except Exception as e:
-                                logging.error(f"Exception in segment processing: {e}")
-                                failed_segments.append({
-                                    'segment_index': segment['index'],
-                                    'error': str(e)
-                                })
+                    executor = ProcessPoolExecutor(max_workers=MAX_WORKERS)
+                    active_executors.append(executor)  # Track it
                     
-                    # Signal progress monitor to stop
+                    logging.info(f"Starting {MAX_WORKERS} worker processes...")
+                    
+                    future_to_segment = {
+                        executor.submit(process_segment_wrapper, (segment, subtitles, progress_queue)): segment 
+                        for segment in segments
+                    }
+                    
+                    for future in as_completed(future_to_segment):
+                        segment = future_to_segment[future]
+                        try:
+                            result = future.result(timeout=3600)
+                            if result['success']:
+                                processed_segments.append(result)
+                                logging.info(f"✓ Segment {result['segment_index']} completed successfully")
+                            else:
+                                failed_segments.append(result)
+                                logging.error(f"✗ Segment {result['segment_index']} failed: {result.get('error', 'Unknown error')}")
+                        except Exception as e:
+                            logging.error(f"Exception in segment processing: {e}")
+                            failed_segments.append({
+                                'segment_index': segment['index'],
+                                'error': str(e)
+                            })
+                
+                except Exception as e:
+                    logging.error(f"Error during parallel processing: {e}")
+                finally:
+                    # Clean up executor
+                    if executor:
+                        try:
+                            executor.shutdown(wait=True, cancel_futures=True)
+                            if executor in active_executors:
+                                active_executors.remove(executor)
+                        except Exception as e:
+                            logging.warning(f"Error shutting down executor: {e}")
+                    
+                    # Clean up progress monitor
                     try:
                         progress_queue.put({'stop': True})
                     except:
                         pass
                     
-                    # Wait for progress monitor to finish
-                    progress_process.join(timeout=5)
                     if progress_process.is_alive():
-                        logging.warning("Force terminating progress monitor")
-                        progress_process.terminate()
-                        progress_process.join(timeout=2)
+                        progress_process.join(timeout=5)
                         if progress_process.is_alive():
-                            progress_process.kill()
-                
-                except Exception as e:
-                    logging.error(f"Error during parallel processing: {e}")
-                    # Ensure progress monitor is stopped
-                    if progress_process.is_alive():
-                        progress_process.terminate()
-                        progress_process.join()
+                            logging.warning("Force terminating progress monitor")
+                            progress_process.terminate()
+                            progress_process.join(timeout=2)
+                            if progress_process.is_alive():
+                                progress_process.kill()
+                                progress_process.join()
+                    
+                    if progress_process in active_multiprocessing_processes:
+                        active_multiprocessing_processes.remove(progress_process)
                 
                 # Clear progress display
                 print("\n" * (len(segments) + 3))
@@ -989,6 +1165,8 @@ def main():
     
     except KeyboardInterrupt:
         logging.info("Process interrupted by user")
+        cleanup_processes()
+        cleanup_contexts()
         sys.exit(1)
     except Exception as e:
         logging.error(f"Failed to create video: {e}")
@@ -998,6 +1176,8 @@ def main():
 
 def process_image_segment_with_progress(segment_info, subtitles, progress_tracker):
     """Process segment with direct progress tracking for single segment mode"""
+    global active_processes, active_contexts
+    
     segment_idx = segment_info['index']
     output_file = segment_info['output']
     segment_duration = segment_info['duration']
@@ -1006,12 +1186,16 @@ def process_image_segment_with_progress(segment_info, subtitles, progress_tracke
     
     total_frames = int(segment_duration * FRAME_RATE)
     
+    ctx = None
+    ffmpeg_out = None
+    
     try:
         logging.info(f"Processing image segment {segment_idx}: {total_frames} frames")
         logging.info(f"Segment {segment_idx} images: {[img['tag'] for img in segment_images]}")
         
         # Create OpenGL context
         ctx = moderngl.create_standalone_context(backend='egl')
+        active_contexts.append(weakref.ref(ctx))
         
         # Load shaders
         vertex_shader = load_shader_file("vertex.glsl")
@@ -1062,10 +1246,20 @@ def process_image_segment_with_progress(segment_info, subtitles, progress_tracke
             stdout=subprocess.PIPE
         )
         
+        # Track the process for cleanup
+        active_processes.append(ffmpeg_out)
+        
         current_subtitle_text = ""
         
         # Generate frames
         for frame_idx in range(total_frames):
+            # Check for interruption more frequently
+            if frame_idx % 10 == 0:  # Check every 10 frames
+                if ffmpeg_out.poll() is not None:
+                    stderr_output = ffmpeg_out.stderr.read().decode('utf-8')
+                    logging.error(f"FFmpeg terminated early in segment {segment_idx}: {stderr_output}")
+                    break
+            
             frame_time = frame_idx / FRAME_RATE  # Time within this segment
             global_time = global_start_time + frame_time  # Global video time
             
@@ -1085,7 +1279,7 @@ def process_image_segment_with_progress(segment_info, subtitles, progress_tracke
             if subtitle_text != current_subtitle_text:
                 current_subtitle_text = subtitle_text
                 if subtitle_text:
-                    text_data, text_width, text_height = create_text_texture(subtitle_text)
+                    text_data, text_width, text_height = create_text_texture(subtitle_text, font_size=SUBTITLE_FONT_SIZE)
                     # Recreate texture with new dimensions
                     subtitle_tex = ctx.texture((text_width, text_height), 4)
                     subtitle_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
@@ -1130,18 +1324,15 @@ def process_image_segment_with_progress(segment_info, subtitles, progress_tracke
             # Read processed frame
             out_data = fbo.read(components=3, alignment=1)
             
-            # Check if FFmpeg process is still alive
-            if ffmpeg_out.poll() is not None:
-                stderr_output = ffmpeg_out.stderr.read().decode('utf-8')
-                logging.error(f"FFmpeg terminated early in segment {segment_idx}: {stderr_output}")
-                break
-            
             try:
                 ffmpeg_out.stdin.write(out_data)
                 ffmpeg_out.stdin.flush()
             except BrokenPipeError as e:
                 stderr_output = ffmpeg_out.stderr.read().decode('utf-8')
                 logging.error(f"Broken pipe in segment {segment_idx} at frame {frame_idx}: {stderr_output}")
+                break
+            except Exception as e:
+                logging.error(f"Error writing to FFmpeg: {e}")
                 break
             
             # Update progress
@@ -1153,13 +1344,34 @@ def process_image_segment_with_progress(segment_info, subtitles, progress_tracke
                 logging.error(f"⚠️ VRAM threshold exceeded in segment {segment_idx}")
                 break
         
-        # Clean up
-        ffmpeg_out.stdin.close()
-        return_code = ffmpeg_out.wait()
+        # Clean up FFmpeg
+        if ffmpeg_out:
+            try:
+                ffmpeg_out.stdin.close()
+                return_code = ffmpeg_out.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                logging.warning(f"FFmpeg timeout for segment {segment_idx}, terminating")
+                ffmpeg_out.terminate()
+                try:
+                    ffmpeg_out.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    ffmpeg_out.kill()
+                return_code = -1
+            
+            # Remove from active processes
+            if ffmpeg_out in active_processes:
+                active_processes.remove(ffmpeg_out)
+        
+        # Clean up OpenGL context
+        if ctx:
+            try:
+                ctx.release()
+            except:
+                pass
         
         # Check FFmpeg return code
         if return_code != 0:
-            stderr_output = ffmpeg_out.stderr.read().decode('utf-8')
+            stderr_output = ffmpeg_out.stderr.read().decode('utf-8') if ffmpeg_out else ""
             logging.error(f"FFmpeg failed for segment {segment_idx} with return code {return_code}: {stderr_output}")
             return {
                 'success': False,
@@ -1175,6 +1387,9 @@ def process_image_segment_with_progress(segment_info, subtitles, progress_tracke
             'frames_processed': total_frames
         }
         
+    except KeyboardInterrupt:
+        logging.info(f"Segment {segment_idx} interrupted by user")
+        raise
     except Exception as e:
         logging.error(f"Error processing image segment {segment_idx}: {e}")
         import traceback
@@ -1184,6 +1399,22 @@ def process_image_segment_with_progress(segment_info, subtitles, progress_tracke
             'segment_index': segment_idx,
             'error': str(e)
         }
+    finally:
+        # Ensure cleanup happens even on exception
+        if ffmpeg_out and ffmpeg_out in active_processes:
+            try:
+                if ffmpeg_out.poll() is None:
+                    ffmpeg_out.terminate()
+                    ffmpeg_out.wait(timeout=5)
+                active_processes.remove(ffmpeg_out)
+            except:
+                pass
+        
+        if ctx:
+            try:
+                ctx.release()
+            except:
+                pass
 
 if __name__ == '__main__':
     start_time = time.time()
