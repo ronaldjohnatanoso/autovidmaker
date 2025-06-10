@@ -44,7 +44,10 @@ FRAME_RATE = 30
 VRAM_THRESHOLD = 0.95
 SEGMENT_DURATION = 20
 MAX_WORKERS = 6
-SUBTITLE_FONT_SIZE = 64 * 2  # Add this line
+SUBTITLE_FONT_SIZE = 64 * 2
+
+# Audio settings
+BACKGROUND_MUSIC_FILE = "wander.mp3"  # Change this to your BGM filename
 
 # Set to True to only process and preview first 10 seconds
 PREVIEW_MODE = False
@@ -938,6 +941,112 @@ def process_segment_wrapper(args):
     segment_info, subtitles, progress_queue = args
     return process_image_segment(segment_info, subtitles, progress_queue)
 
+def add_audio_to_video(video_file, narration_audio, bgm_audio, final_output, total_duration):
+    """Add narration and background music to video using FFmpeg GPU acceleration"""
+    try:
+        # Build FFmpeg command with GPU acceleration
+        cmd = ['ffmpeg', '-y']
+        
+        # Input video
+        cmd.extend(['-i', video_file])
+        
+        # Input narration audio (if exists)
+        narration_exists = narration_audio and os.path.exists(narration_audio)
+        if narration_exists:
+            cmd.extend(['-i', narration_audio])
+        
+        # Input background music (if exists)
+        bgm_exists = bgm_audio and os.path.exists(bgm_audio)
+        if bgm_exists:
+            cmd.extend(['-i', bgm_audio])
+        
+        # Video codec - keep existing encoding
+        cmd.extend(['-c:v', 'copy'])  # Copy video without re-encoding
+        
+        # Audio processing
+        if narration_exists and bgm_exists:
+            # Mix narration and background music
+            audio_input_index = 1  # Narration
+            bgm_input_index = 2    # Background music
+            
+            # Create complex filter to mix audio
+            filter_complex = (
+                f"[{bgm_input_index}:a]aloop=loop=-1:size=2e+09[bg];"  # Loop BGM indefinitely
+                f"[bg]volume=0.3[bg_quiet];"  # Lower BGM volume to 30%
+                f"[{audio_input_index}:a][bg_quiet]amix=inputs=2:duration=first:dropout_transition=2[mixed]"
+            )
+            cmd.extend(['-filter_complex', filter_complex])
+            cmd.extend(['-map', '0:v'])  # Map video from first input
+            cmd.extend(['-map', '[mixed]'])  # Map mixed audio
+            
+        elif narration_exists:
+            # Only narration
+            cmd.extend(['-map', '0:v'])  # Map video
+            cmd.extend(['-map', '1:a'])  # Map narration audio
+            
+        elif bgm_exists:
+            # Only background music
+            cmd.extend(['-filter_complex', f'[1:a]aloop=loop=-1:size=2e+09,volume=0.5[bg]'])
+            cmd.extend(['-map', '0:v'])  # Map video
+            cmd.extend(['-map', '[bg]'])  # Map looped BGM
+            
+        else:
+            # No audio - just copy video
+            cmd.extend(['-map', '0:v'])
+            cmd.extend(['-an'])  # No audio
+        
+        # Audio codec and settings
+        if narration_exists or bgm_exists:
+            cmd.extend(['-c:a', 'aac'])
+            cmd.extend(['-b:a', '128k'])
+            cmd.extend(['-ar', '48000'])
+        
+        # Duration and output
+        cmd.extend(['-t', str(total_duration)])  # Limit to video duration
+        cmd.append(final_output)
+        
+        logging.info("Adding audio to video...")
+        if narration_exists:
+            logging.info(f"  📢 Narration: {narration_audio}")
+        if bgm_exists:
+            logging.info(f"  🎵 Background music: {bgm_audio}")
+        
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        logging.info(f"✅ Audio processing completed: {final_output}")
+        
+    except subprocess.CalledProcessError as e:
+        logging.error(f"❌ Failed to add audio: {e}")
+        raise
+    except Exception as e:
+        logging.error(f"❌ Audio processing error: {e}")
+        raise
+
+def find_audio_files(project_name, script_dir):
+    """Find narration and background music files"""
+    project_dir = script_dir.parent / "0-project-files" / project_name
+    
+    # Find narration audio
+    narration_file = project_dir / f"{project_name}.wav"
+    narration_audio = str(narration_file) if narration_file.exists() else None
+    
+    # Find background music
+    common_assets_dir = script_dir.parent / "common_assets"
+    bgm_file = common_assets_dir / BACKGROUND_MUSIC_FILE
+    bgm_audio = str(bgm_file) if bgm_file.exists() else None
+    
+    # Log what we found
+    if narration_audio:
+        logging.info(f"🎤 Found narration: {narration_audio}")
+    else:
+        logging.info(f"⚠️  No narration found: {project_dir / f'{project_name}.wav'}")
+    
+    if bgm_audio:
+        logging.info(f"🎵 Found background music: {bgm_audio}")
+    else:
+        logging.info(f"⚠️  No background music found: {common_assets_dir / BACKGROUND_MUSIC_FILE}")
+    
+    return narration_audio, bgm_audio
+
 def main():
     parser = argparse.ArgumentParser(description='Create video from project images with shader effects and subtitles')
     parser.add_argument('project_name', help='Name of the project folder')
@@ -975,14 +1084,18 @@ def main():
                 
                 logging.info(f"Preview mode: Using first segment duration of {preview_duration:.2f}s")
         
-            # Set output file
+            # Set output file paths
+            script_dir = Path(__file__).parent
+            
             if args.output:
                 final_output = args.output
             else:
-                script_dir = Path(__file__).parent
                 project_dir = script_dir.parent / "0-project-files" / args.project_name
                 suffix = "_preview" if PREVIEW_MODE else ""
                 final_output = str(project_dir / f"{args.project_name}{suffix}.mp4")
+            
+            # Create temporary video output (without audio)
+            temp_video_output = final_output.replace('.mp4', '_temp_video.mp4')
             
             logging.info(f"Creating video: {final_output}")
             logging.info(f"Duration: {total_duration:.2f}s")
@@ -994,7 +1107,7 @@ def main():
             
             # Handle single vs multiple segments
             if len(segments) == 1:
-                # Single segment processing (no changes needed here)
+                # Single segment processing
                 segment = segments[0]
                 logging.info(f"Processing single segment with progress bar...")
                 
@@ -1028,29 +1141,24 @@ def main():
                     failed_segments = [result]
                     logging.error(f"✗ Segment failed: {result.get('error', 'Unknown error')}")
             else:
-                # Multiple segments - use parallel processing with better cleanup
+                # Multiple segments processing
                 logging.info(f"Processing {len(segments)} segments with {MAX_WORKERS} workers...")
                 
-                # Use multiprocessing manager for shared queue
                 manager = mp.Manager()
                 progress_queue = manager.Queue()
-                
-                # Create segment info dictionary
                 segment_info_dict = {segment['index']: segment for segment in segments}
                 
-                # Start progress monitor in a separate process
                 progress_process = mp.Process(
                     target=progress_monitor,
                     args=(progress_queue, len(segments), segment_info_dict)
                 )
                 progress_process.start()
-                active_multiprocessing_processes.append(progress_process)  # Track it
+                active_multiprocessing_processes.append(progress_process)
                 
                 executor = None
                 try:
-                    # Process segments in parallel with enforced MAX_WORKERS
                     executor = ProcessPoolExecutor(max_workers=MAX_WORKERS)
-                    active_executors.append(executor)  # Track it
+                    active_executors.append(executor)
                     
                     logging.info(f"Starting {MAX_WORKERS} worker processes...")
                     
@@ -1079,7 +1187,7 @@ def main():
                 except Exception as e:
                     logging.error(f"Error during parallel processing: {e}")
                 finally:
-                    # Clean up executor
+                    # Cleanup
                     if executor:
                         try:
                             executor.shutdown(wait=True, cancel_futures=True)
@@ -1088,7 +1196,6 @@ def main():
                         except Exception as e:
                             logging.warning(f"Error shutting down executor: {e}")
                     
-                    # Clean up progress monitor
                     try:
                         progress_queue.put({'stop': True})
                     except:
@@ -1107,7 +1214,6 @@ def main():
                     if progress_process in active_multiprocessing_processes:
                         active_multiprocessing_processes.remove(progress_process)
                 
-                # Clear progress display
                 print("\n" * (len(segments) + 3))
                 logging.info("All segments processing completed")
             
@@ -1117,14 +1223,14 @@ def main():
                     logging.error(f"  Segment {seg['segment_index']}: {seg.get('error', 'Unknown error')}")
                 return
             
-            # Handle concatenation or single segment
+            # Create video without audio first
             if len(processed_segments) == 1:
                 # Single segment - just copy/move the file
                 single_segment = processed_segments[0]
                 try:
                     import shutil
-                    shutil.move(single_segment['output_file'], final_output)
-                    logging.info(f"✓ Moved single segment to {final_output}")
+                    shutil.move(single_segment['output_file'], temp_video_output)
+                    logging.info(f"✓ Moved single segment to {temp_video_output}")
                 except Exception as e:
                     logging.error(f"Failed to move single segment: {e}")
                     return
@@ -1132,7 +1238,7 @@ def main():
                 # Multiple segments - concatenate with GPU
                 logging.info("🔗 Concatenating processed segments with GPU...")
                 try:
-                    concatenate_segments(processed_segments, final_output)
+                    concatenate_segments(processed_segments, temp_video_output)
                     logging.info("✓ Concatenation completed successfully")
                 except Exception as e:
                     logging.error(f"Concatenation failed: {e}")
@@ -1145,6 +1251,42 @@ def main():
                         logging.info(f"🗑️ Cleaned up {segment['output_file']}")
                     except Exception as e:
                         logging.warning(f"Failed to clean up {segment['output_file']}: {e}")
+            
+            # Find audio files
+            narration_audio, bgm_audio = find_audio_files(args.project_name, script_dir)
+            
+            # Add audio to video
+            if narration_audio or bgm_audio:
+                logging.info("🎧 Processing audio...")
+                try:
+                    add_audio_to_video(temp_video_output, narration_audio, bgm_audio, final_output, total_duration)
+                    
+                    # Clean up temporary video file
+                    try:
+                        os.unlink(temp_video_output)
+                        logging.info(f"🗑️ Cleaned up temporary video: {temp_video_output}")
+                    except Exception as e:
+                        logging.warning(f"Failed to clean up temporary video: {e}")
+                        
+                except Exception as e:
+                    logging.error(f"Failed to add audio: {e}")
+                    # If audio processing fails, use the video without audio
+                    try:
+                        import shutil
+                        shutil.move(temp_video_output, final_output)
+                        logging.warning(f"⚠️  Using video without audio: {final_output}")
+                    except Exception as e2:
+                        logging.error(f"Failed to move video without audio: {e2}")
+                        return
+            else:
+                # No audio files found - just rename temp video to final
+                try:
+                    import shutil
+                    shutil.move(temp_video_output, final_output)
+                    logging.info(f"✓ No audio files found, using video only: {final_output}")
+                except Exception as e:
+                    logging.error(f"Failed to move video: {e}")
+                    return
             
             logging.info(f"✅ Video created successfully: {final_output}")
             

@@ -13,13 +13,28 @@ out vec4 color;                  // Final pixel color
 // ============================================================================
 
 /**
- * ZOOM MODULE - Completely self-contained
- * Input: any UV coordinates
- * Output: zoomed UV coordinates
+ * KEN BURNS EFFECT - Slow zoom and pan like documentary films
+ * Input: UV coordinates and time
+ * Output: transformed UV coordinates with slow zoom/pan
  */
-vec2 effect_zoom(vec2 input_uv, float time) {
-    vec2 center = vec2(0.5, 0.5);
-    float zoom_factor = 1.0 + sin(time * 2.0) * 0.3; // speed=2.0, intensity=0.3
+vec2 effect_ken_burns(vec2 input_uv, float time) {
+    // Ken Burns parameters
+    float zoom_speed = 0.1;        // How fast to zoom (lower = slower)
+    float pan_speed_x = 0.05;      // Horizontal pan speed
+    float pan_speed_y = 0.02;      // Vertical pan speed
+    float max_zoom = 1.3;          // Maximum zoom level
+    
+    // Calculate zoom factor (slow zoom in)
+    float zoom_factor = 1.0 + (sin(time * zoom_speed) * 0.5 + 0.5) * (max_zoom - 1.0);
+    
+    // Calculate pan offset (slow drift)
+    vec2 pan_offset = vec2(
+        sin(time * pan_speed_x) * 0.1,     // Gentle horizontal drift
+        cos(time * pan_speed_y) * 0.05     // Gentle vertical drift
+    );
+    
+    // Apply zoom and pan
+    vec2 center = vec2(0.5, 0.5) + pan_offset;
     return center + (input_uv - center) / zoom_factor;
 }
 
@@ -56,18 +71,8 @@ vec3 effect_scanlines(vec3 input_color, vec2 uv_coords, float time) {
  */
 vec3 effect_vignette(vec3 input_color, vec2 uv_coords) {
     vec2 vignette_center = uv_coords - 0.5;
-    float vignette_factor = 1.0 - dot(vignette_center, vignette_center) *3.0 ; // Increased from 0.9 to 2.5
+    float vignette_factor = 1.0 - dot(vignette_center, vignette_center) * 3.0;
     return input_color * vignette_factor;
-}
-
-/**
- * DESATURATION MODULE - Completely independent color effect
- * Input: color
- * Output: desaturated color
- */
-vec3 effect_desaturate(vec3 input_color, float amount) {
-    float gray = dot(input_color, vec3(0.299, 0.587, 0.114));
-    return mix(input_color, vec3(gray), amount);
 }
 
 /**
@@ -102,7 +107,7 @@ vec2 effect_crt_distortion(vec2 input_uv) {
     vec2 centered_uv = input_uv - 0.5;
     
     // More aggressive barrel distortion
-    float distortion_strength = 0.4;  // Increased from 0.15 to 0.4
+    float distortion_strength = 0.4;
     
     // Apply barrel distortion using a stronger formula
     float r2 = dot(centered_uv, centered_uv);
@@ -113,20 +118,6 @@ vec2 effect_crt_distortion(vec2 input_uv) {
     return distorted_uv;
 }
 
-/**
- * CRT EDGE FADE MODULE - Darkens edges like old TV with more aggressive fade
- */
-vec3 effect_crt_edge_fade(vec3 input_color, vec2 uv_coords) {
-    // More aggressive edge fade
-    vec2 edge_distance = abs(uv_coords - 0.5);
-    float max_edge_distance = max(edge_distance.x, edge_distance.y);
-    
-    // Make the fade start earlier and be more dramatic
-    float edge_fade = 1.0 - smoothstep(0.35, 0.5, max_edge_distance);
-    
-    return input_color * edge_fade;
-}
-
 // ============================================================================
 // MAIN FUNCTION
 // ============================================================================
@@ -134,11 +125,11 @@ void main() {
     // Start with original UV coordinates
     vec2 working_uv = uv;
     
-    // Apply CRT barrel distortion FIRST (affects sampling)
-    working_uv = effect_crt_distortion(working_uv);
+    // Apply Ken Burns effect FIRST (slow zoom and pan)
+    working_uv = effect_ken_burns(working_uv, u_time);
     
-    // Apply zoom after distortion (uncomment if you want zoom)
-    // working_uv = effect_zoom(working_uv, u_time);
+    // Apply CRT barrel distortion after Ken Burns
+    working_uv = effect_crt_distortion(working_uv);
     
     // More lenient bounds check - allow some distortion outside normal range
     if (working_uv.x < -0.1 || working_uv.x > 1.1 || working_uv.y < -0.1 || working_uv.y > 1.1) {
@@ -156,8 +147,6 @@ void main() {
     // Apply color effects (using original UV for effects, not distorted)
     working_color = effect_scanlines(working_color, uv, u_time);
     working_color = effect_vignette(working_color, uv);
-    // working_color = effect_crt_edge_fade(working_color, uv); // CRT edge darkening
-    // working_color = effect_desaturate(working_color, 0.2); // Increased desaturation
     
     // Add subtitle overlay (using original UV)
     working_color = add_subtitle_overlay(working_color, uv);
