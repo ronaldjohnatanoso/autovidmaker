@@ -42,7 +42,7 @@ WIDTH = 1920
 HEIGHT = 1080
 FRAME_RATE = 30
 VRAM_THRESHOLD = 0.95
-SEGMENT_DURATION = 20
+SEGMENT_DURATION = 10
 MAX_WORKERS = 6
 SUBTITLE_FONT_SIZE = 64 * 2
 
@@ -515,7 +515,7 @@ def get_gpu_memory_usage():
         logging.warning(f"Failed to retrieve GPU memory usage: {e}")
         return 0
 
-def process_image_segment(segment_info, subtitles, progress_queue=None):
+def process_image_segment(segment_info, subtitles, progress_queue=None, shader_file="fragment.glsl"):
     """Process one video segment with shader effects applied to image timeline"""
     global active_processes, active_contexts
     
@@ -540,7 +540,7 @@ def process_image_segment(segment_info, subtitles, progress_queue=None):
         
         # Load shaders
         vertex_shader = load_shader_file("vertex.glsl")
-        fragment_shader = load_shader_file("fragment.glsl")
+        fragment_shader = load_shader_file(shader_file)  # Use specified shader file
         prog = ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
         
         # Create quad
@@ -940,8 +940,8 @@ def play_video_preview(video_file):
 
 def process_segment_wrapper(args):
     """Wrapper function for multiprocessing"""
-    segment_info, subtitles, progress_queue = args
-    return process_image_segment(segment_info, subtitles, progress_queue)
+    segment_info, subtitles, progress_queue, shader_file = args
+    return process_image_segment(segment_info, subtitles, progress_queue, shader_file)
 
 def add_audio_to_video(video_file, narration_audio, bgm_audio, final_output, total_duration):
     """Add narration and background music to video using FFmpeg GPU acceleration"""
@@ -1056,15 +1056,39 @@ def find_audio_files(project_name, script_dir):
     return narration_audio, bgm_audio
 
 def main():
+    # Move global declaration to the top of the function
+    global PREVIEW_MODE, active_executors, active_multiprocessing_processes, SEGMENT_DURATION
+    
     parser = argparse.ArgumentParser(description='Create video from project images with shader effects and subtitles')
     parser.add_argument('project_name', help='Name of the project folder')
     parser.add_argument('--preview', action='store_true', help='Create and preview first segment only')
     parser.add_argument('--output', help='Output video file path (default: project_name.mp4)')
+    parser.add_argument('--segment-duration', type=float, help=f'Duration of each segment in seconds (default: {SEGMENT_DURATION})')
+    parser.add_argument('--shader', default='fragment.glsl', help='Fragment shader file name (default: fragment.glsl)')
     
     args = parser.parse_args()
     
-    global PREVIEW_MODE, active_executors, active_multiprocessing_processes
     PREVIEW_MODE = args.preview
+    
+    # Override SEGMENT_DURATION if provided via command line
+    if args.segment_duration:
+        SEGMENT_DURATION = args.segment_duration
+        logging.info(f"Using command line segment duration: {SEGMENT_DURATION}s")
+    else:
+        logging.info(f"Using default segment duration: {SEGMENT_DURATION}s")
+    
+    # Validate shader file exists
+    shader_path = Path(__file__).parent / "shaders" / args.shader
+    if not shader_path.exists():
+        logging.error(f"Shader file not found: {shader_path}")
+        logging.error(f"Available shaders in /shaders/ directory:")
+        shader_dir = Path(__file__).parent / "shaders"
+        if shader_dir.exists():
+            for shader_file in shader_dir.glob("*.glsl"):
+                logging.error(f"  - {shader_file.name}")
+        sys.exit(1)
+    
+    logging.info(f"Using fragment shader: {args.shader}")
     
     try:
         # Load project data including subtitles
@@ -1139,7 +1163,7 @@ def main():
                 
                 tracker = ProgressTracker(progress_bar)
                 
-                result = process_image_segment_with_progress(segment, subtitles, tracker)
+                result = process_image_segment_with_progress(segment, subtitles, tracker, args.shader)
                 progress_bar.close()
                 
                 if result['success']:
@@ -1171,7 +1195,7 @@ def main():
                     logging.info(f"Starting {MAX_WORKERS} worker processes...")
                     
                     future_to_segment = {
-                        executor.submit(process_segment_wrapper, (segment, subtitles, progress_queue)): segment 
+                        executor.submit(process_segment_wrapper, (segment, subtitles, progress_queue, args.shader)): segment 
                         for segment in segments
                     }
                     
@@ -1324,7 +1348,7 @@ def main():
         logging.error(f"Traceback: {traceback.format_exc()}")
         sys.exit(1)
 
-def process_image_segment_with_progress(segment_info, subtitles, progress_tracker):
+def process_image_segment_with_progress(segment_info, subtitles, progress_tracker, shader_file="fragment.glsl"):
     """Process segment with direct progress tracking for single segment mode"""
     global active_processes, active_contexts
     
@@ -1349,7 +1373,7 @@ def process_image_segment_with_progress(segment_info, subtitles, progress_tracke
         
         # Load shaders
         vertex_shader = load_shader_file("vertex.glsl")
-        fragment_shader = load_shader_file("fragment.glsl")
+        fragment_shader = load_shader_file(shader_file)  # Use specified shader file
         prog = ctx.program(vertex_shader=vertex_shader, fragment_shader=fragment_shader)
         
         # Create quad
