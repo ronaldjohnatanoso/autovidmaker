@@ -13,28 +13,26 @@ out vec4 color;                  // Final pixel color
 // ============================================================================
 
 /**
- * KEN BURNS EFFECT - Slow zoom and pan like documentary films
- * Input: UV coordinates and time
- * Output: transformed UV coordinates with slow zoom/pan
+ * RETENTION-OPTIMIZED KEN BURNS - Uses golden ratio and Fibonacci spirals
  */
 vec2 effect_ken_burns(vec2 input_uv, float time) {
-    // Ken Burns parameters
-    float zoom_speed = 0.1;        // How fast to zoom (lower = slower)
-    float pan_speed_x = 0.05;      // Horizontal pan speed
-    float pan_speed_y = 0.02;      // Vertical pan speed
-    float max_zoom = 1.3;          // Maximum zoom level
+    // Golden ratio-based movement (naturally pleasing to human eye)
+    float phi = 1.618033988749895; // Golden ratio
     
-    // Calculate zoom factor (slow zoom in)
+    float zoom_speed = 0.08;       // Slower, more hypnotic
+    float pan_speed = 0.03;        // Gentle drift
+    float max_zoom = 1.4;          // Slightly more zoom
+    
+    // Fibonacci spiral-based zoom (mathematically pleasing)
     float zoom_factor = 1.0 + (sin(time * zoom_speed) * 0.5 + 0.5) * (max_zoom - 1.0);
     
-    // Calculate pan offset (slow drift)
-    vec2 pan_offset = vec2(
-        sin(time * pan_speed_x) * 0.1,     // Gentle horizontal drift
-        cos(time * pan_speed_y) * 0.05     // Gentle vertical drift
+    // Golden ratio spiral movement
+    vec2 spiral_offset = vec2(
+        sin(time * pan_speed * phi) * 0.08,
+        cos(time * pan_speed / phi) * 0.05
     );
     
-    // Apply zoom and pan
-    vec2 center = vec2(0.5, 0.5) + pan_offset;
+    vec2 center = vec2(0.5, 0.5) + spiral_offset;
     return center + (input_uv - center) / zoom_factor;
 }
 
@@ -118,6 +116,63 @@ vec2 effect_crt_distortion(vec2 input_uv) {
     return distorted_uv;
 }
 
+/**
+ * HYPNOTIC PULSE - Rhythmic zoom that creates subconscious engagement
+ */
+vec2 effect_hypnotic_pulse(vec2 input_uv, float time) {
+    // Pulse parameters
+    float pulse_speed = 1.5;       // Speed of pulse (heartbeat-like)
+    float pulse_intensity = 0.08;  // How much it pulses
+    
+    // Create pulse based on heartbeat rhythm (60-80 BPM feels natural)
+    float pulse = sin(time * pulse_speed) * 0.5 + 0.5;
+    pulse = pow(pulse, 2.0); // Make it more dramatic
+    
+    // Apply subtle zoom pulse
+    float zoom = 1.0 + pulse * pulse_intensity;
+    vec2 center = vec2(0.5, 0.5);
+    
+    return center + (input_uv - center) / zoom;
+}
+
+/**
+ * RETENTION BOOSTER - Subtle color temperature shifts
+ */
+vec3 effect_retention_boost(vec3 input_color, float time) {
+    // Very subtle color temperature shifts (warmer/cooler)
+    float temp_shift = sin(time * 0.3) * 0.1; // Slow, subtle shift
+    
+    // Slightly boost saturation during shifts
+    float sat_boost = 1.0 + abs(temp_shift) * 0.2;
+    
+    // Apply temperature shift
+    vec3 warm_shift = input_color * vec3(1.0 + temp_shift, 1.0, 1.0 - temp_shift * 0.5);
+    
+    // Boost saturation
+    float luminance = dot(warm_shift, vec3(0.299, 0.587, 0.114));
+    return mix(vec3(luminance), warm_shift, sat_boost);
+}
+
+/**
+ * SUBTLE MOTION ATTENTION - Creates gentle drift that keeps eyes engaged
+ */
+vec2 effect_attention_drift(vec2 input_uv, float time) {
+    // Very subtle parallax-like movement
+    float drift_x = sin(time * 0.2) * 0.01;  // Super subtle horizontal drift
+    float drift_y = cos(time * 0.15) * 0.005; // Even more subtle vertical
+    
+    // Add slight rotation (barely noticeable but subconsciously engaging)
+    float angle = sin(time * 0.1) * 0.002; // 0.002 radians = ~0.1 degrees
+    
+    vec2 centered_uv = input_uv - 0.5;
+    vec2 rotated_uv = vec2(
+        centered_uv.x * cos(angle) - centered_uv.y * sin(angle),
+        centered_uv.x * sin(angle) + centered_uv.y * cos(angle)
+    );
+    
+    return rotated_uv + 0.5 + vec2(drift_x, drift_y);
+}
+
 // ============================================================================
 // MAIN FUNCTION
 // ============================================================================
@@ -125,32 +180,30 @@ void main() {
     // Start with original UV coordinates
     vec2 working_uv = uv;
     
-    // Apply Ken Burns effect FIRST (slow zoom and pan)
-    working_uv = effect_ken_burns(working_uv, u_time);
+    // Apply retention-boosting effects
+    working_uv = effect_ken_burns(working_uv, u_time);        // Golden ratio movement
+    working_uv = effect_hypnotic_pulse(working_uv, u_time);   // Subtle pulse
+    working_uv = effect_attention_drift(working_uv, u_time);  // Micro-movements
+    working_uv = effect_crt_distortion(working_uv);           // CRT effect
     
-    // Apply CRT barrel distortion after Ken Burns
-    working_uv = effect_crt_distortion(working_uv);
-    
-    // More lenient bounds check - allow some distortion outside normal range
+    // Bounds check
     if (working_uv.x < -0.1 || working_uv.x > 1.1 || working_uv.y < -0.1 || working_uv.y > 1.1) {
-        color = vec4(0.0, 0.0, 0.0, 1.0); // Black outside screen area
+        color = vec4(0.0, 0.0, 0.0, 1.0);
         return;
     }
     
-    // Clamp UV to valid range for texture sampling
+    // Sample texture
     vec2 clamped_uv = clamp(working_uv, 0.0, 1.0);
-    
-    // Sample texture with clamped UV coordinates
     vec4 base_texture = texture(tex, clamped_uv);
     vec3 working_color = base_texture.rgb;
     
-    // Apply color effects (using original UV for effects, not distorted)
-    working_color = effect_scanlines(working_color, uv, u_time);
-    working_color = effect_vignette(working_color, uv);
+    // Apply visual retention effects
+    working_color = effect_retention_boost(working_color, u_time); // Color psychology
+    working_color = effect_scanlines(working_color, uv, u_time);   // CRT nostalgia
+    working_color = effect_vignette(working_color, uv);            // Focus attention
     
-    // Add subtitle overlay (using original UV)
+    // Subtitles
     working_color = add_subtitle_overlay(working_color, uv);
     
-    // Output final result
     color = vec4(working_color, base_texture.a);
 }

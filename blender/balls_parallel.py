@@ -48,6 +48,8 @@ SUBTITLE_FONT_SIZE = 64 * 2
 
 # Audio settings
 BACKGROUND_MUSIC_FILE = "wander.mp3"  # Change this to your BGM filename
+BGM_VOLUME = 0.5                     # Background music volume (0.0 to 1.0)
+NARRATION_VOLUME = 1.0                # Narration audio volume (0.0 to 1.0)
 
 # Set to True to only process and preview first 10 seconds
 PREVIEW_MODE = False
@@ -969,26 +971,32 @@ def add_audio_to_video(video_file, narration_audio, bgm_audio, final_output, tot
             audio_input_index = 1  # Narration
             bgm_input_index = 2    # Background music
             
-            # Create complex filter to mix audio
+            # Create complex filter to mix audio with configurable volumes
             filter_complex = (
                 f"[{bgm_input_index}:a]aloop=loop=-1:size=2e+09[bg];"  # Loop BGM indefinitely
-                f"[bg]volume=0.3[bg_quiet];"  # Lower BGM volume to 30%
-                f"[{audio_input_index}:a][bg_quiet]amix=inputs=2:duration=first:dropout_transition=2[mixed]"
+                f"[bg]volume={BGM_VOLUME}[bg_quiet];"  # Set BGM volume
+                f"[{audio_input_index}:a]volume={NARRATION_VOLUME}[narration_vol];"  # Set narration volume
+                f"[narration_vol][bg_quiet]amix=inputs=2:duration=first:dropout_transition=2[mixed]"
             )
             cmd.extend(['-filter_complex', filter_complex])
             cmd.extend(['-map', '0:v'])  # Map video from first input
             cmd.extend(['-map', '[mixed]'])  # Map mixed audio
             
         elif narration_exists:
-            # Only narration
-            cmd.extend(['-map', '0:v'])  # Map video
-            cmd.extend(['-map', '1:a'])  # Map narration audio
+            # Only narration with volume control
+            if NARRATION_VOLUME != 1.0:
+                cmd.extend(['-filter_complex', f'[1:a]volume={NARRATION_VOLUME}[narration_vol]'])
+                cmd.extend(['-map', '0:v'])  # Map video
+                cmd.extend(['-map', '[narration_vol]'])  # Map volume-adjusted narration
+            else:
+                cmd.extend(['-map', '0:v'])  # Map video
+                cmd.extend(['-map', '1:a'])  # Map narration audio as-is
             
         elif bgm_exists:
-            # Only background music
-            cmd.extend(['-filter_complex', f'[1:a]aloop=loop=-1:size=2e+09,volume=0.5[bg]'])
+            # Only background music with volume control
+            cmd.extend(['-filter_complex', f'[1:a]aloop=loop=-1:size=2e+09,volume={BGM_VOLUME}[bg]'])
             cmd.extend(['-map', '0:v'])  # Map video
-            cmd.extend(['-map', '[bg]'])  # Map looped BGM
+            cmd.extend(['-map', '[bg]'])  # Map looped BGM with volume
             
         else:
             # No audio - just copy video
@@ -1007,9 +1015,9 @@ def add_audio_to_video(video_file, narration_audio, bgm_audio, final_output, tot
         
         logging.info("Adding audio to video...")
         if narration_exists:
-            logging.info(f"  📢 Narration: {narration_audio}")
+            logging.info(f"  📢 Narration: {narration_audio} (volume: {NARRATION_VOLUME})")
         if bgm_exists:
-            logging.info(f"  🎵 Background music: {bgm_audio}")
+            logging.info(f"  🎵 Background music: {bgm_audio} (volume: {BGM_VOLUME})")
         
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         logging.info(f"✅ Audio processing completed: {final_output}")
