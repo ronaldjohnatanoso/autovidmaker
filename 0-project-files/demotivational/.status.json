@@ -44,9 +44,9 @@
     },
     "upscale_img": {
       "status": "completed",
-      "started_at": "2025-06-05T13:13:39.952Z",
-      "completed_at": "2025-06-05T13:16:55.948Z",
-      "duration": 195996,
+      "started_at": "2025-06-10T14:40:21.285Z",
+      "completed_at": "2025-06-10T14:43:38.335Z",
+      "duration": 197050,
       "error": null,
       "metadata": {},
       "ended_at": "2025-06-05T12:40:43.984030Z",
