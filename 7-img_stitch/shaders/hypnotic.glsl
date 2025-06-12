@@ -40,14 +40,26 @@ vec2 effect_hypnotic_spiral(vec2 input_uv, float time) {
     float radius = length(centered_uv);
     float angle = atan(centered_uv.y, centered_uv.x);
     
-    // Create spiral distortion
+    // Only apply spiral to outer 50% (radius > 0.25)
+    float spiral_threshold = 0.200;
     float spiral_intensity = 3.0;
     float spiral_speed = 1.5;
-    angle += radius * spiral_intensity * sin(time * spiral_speed);
     
-    // Apply slight zoom pulse
-    float pulse = 1.0 + sin(time * 2.0) * 0.05;
-    radius *= pulse;
+    if (radius > spiral_threshold) {
+        // Create smooth transition from no effect to full effect
+        float effect_strength = (radius - spiral_threshold) / (1.0 - spiral_threshold);
+        effect_strength = smoothstep(0.0, 1.0, effect_strength); // Smooth transition
+        
+        angle += radius * spiral_intensity * sin(time * spiral_speed) * effect_strength;
+    }
+    
+    // Apply slight zoom pulse only to outer area as well
+    if (radius > spiral_threshold) {
+        float pulse = 1.0 + sin(time * 2.0) * 0.05;
+        float effect_strength = (radius - spiral_threshold) / (1.0 - spiral_threshold);
+        effect_strength = smoothstep(0.0, 1.0, effect_strength);
+        radius *= mix(1.0, pulse, effect_strength);
+    }
     
     return center + vec2(cos(angle), sin(angle)) * radius;
 }
@@ -66,11 +78,11 @@ vec3 effect_glitch(vec3 input_color, vec2 uv_coords, float time) {
     shifted_color.r = mix(input_color.r, input_color.g, shift_intensity);
     shifted_color.b = mix(input_color.b, input_color.r, shift_intensity);
     
-    // Random brightness spikes
+    // Random brightness spikes - now grey instead of white
     float brightness_noise = sin(time * 30.0 + uv_coords.x * 500.0);
-    float brightness_spike = step(0.99, brightness_noise) * 2.0;
+    float brightness_spike = step(0.99, brightness_noise) * 0.5; // Reduced from 2.0 to 0.5 and made grey
     
-    return shifted_color + brightness_spike;
+    return shifted_color + vec3(brightness_spike * 0.5); // Make it grey by multiplying by 0.5
 }
 
 /**
@@ -133,9 +145,8 @@ vec3 effect_color_cycling(vec3 input_color, float time) {
     float luminance = dot(warm_shift, vec3(0.299, 0.587, 0.114));
     vec3 saturated = mix(vec3(luminance), warm_shift, sat_boost);
     
-    // Add slight color inversion pulse
-    float invert_pulse = step(0.98, sin(time * 5.0)) * 0.3;
-    return mix(saturated, 1.0 - saturated, invert_pulse);
+    // Removed color inversion pulse to eliminate white flashes
+    return saturated;
 }
 
 /**
@@ -224,7 +235,7 @@ void main() {
     // Apply HARDCORE color effects
     working_color = effect_glitch(working_color, uv, u_time);
     working_color = effect_color_cycling(working_color, u_time);
-    working_color = effect_hardcore_scanlines(working_color, uv, u_time);
+    // working_color = effect_hardcore_scanlines(working_color, uv, u_time); // DISABLED
     working_color = effect_hardcore_vignette(working_color, uv, u_time);
     
     // Subtitles
