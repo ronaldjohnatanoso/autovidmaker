@@ -39,9 +39,9 @@ vec2 effect_hypnotic_spiral(vec2 input_uv, float time) {
     
     float radius = length(centered_uv);
     float angle = atan(centered_uv.y, centered_uv.x);
-    
-    // Only apply spiral to outer 50% (radius > 0.25)
-    float spiral_threshold = 0.200;
+
+    // Only apply spiral to outer 50% (radius > 0.250)
+    float spiral_threshold = 0.250;
     float spiral_intensity = 3.0;
     float spiral_speed = 1.5;
     

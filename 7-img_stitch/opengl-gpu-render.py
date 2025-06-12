@@ -46,6 +46,13 @@ SEGMENT_DURATION = 10
 MAX_WORKERS = 6
 SUBTITLE_FONT_SIZE = 64 * 2
 
+# Optimized encoding settings for size/speed balance
+ENCODING_PRESET = 'p4'      # Balanced preset (p1=fastest, p7=slowest)
+ENCODING_CRF = 28           # Higher = smaller files (18=high quality, 28=balanced, 32=small)
+ENCODING_BITRATE = '4M'     # Lower bitrate for smaller files
+ENCODING_MAXRATE = '6M'     # Max bitrate cap
+ENCODING_BUFSIZE = '8M'     # Buffer size
+
 # Audio settings
 BACKGROUND_MUSIC_FILE = "wander.mp3"  # Change this to your BGM filename
 BGM_VOLUME = 0.5                     # Background music volume (0.0 to 1.0)
@@ -563,18 +570,23 @@ def process_image_segment(segment_info, subtitles, progress_queue=None, shader_f
         
         fbo = ctx.framebuffer(color_attachments=[ctx.texture((WIDTH, HEIGHT), 3)])
         
-        # Setup FFmpeg output with NVIDIA GPU encoding
+        # Setup FFmpeg output with NVIDIA GPU encoding - OPTIMIZED FOR SIZE
         ffmpeg_cmd = [
             'ffmpeg', '-y', '-f', 'rawvideo',
             '-vcodec', 'rawvideo', '-pix_fmt', 'rgb24',
             '-s', f'{WIDTH}x{HEIGHT}', '-r', str(FRAME_RATE),
             '-i', '-', '-an', 
             '-c:v', 'h264_nvenc',
-            '-preset', 'p1',                 # Fastest preset
-            '-tune', 'll',                   # Low latency
-            '-rc', 'cbr',                    # Constant bitrate
-            '-b:v', '6M',                    # Lower bitrate for speed
-            '-pix_fmt', 'yuv420p', 
+            '-preset', ENCODING_PRESET,      # Balanced speed/quality
+            '-rc', 'vbr',                    # Variable bitrate for better compression
+            '-cq', str(ENCODING_CRF),        # Quality-based encoding
+            '-b:v', ENCODING_BITRATE,        # Target bitrate
+            '-maxrate', ENCODING_MAXRATE,    # Max bitrate
+            '-bufsize', ENCODING_BUFSIZE,    # Buffer size
+            '-profile:v', 'main',            # H.264 main profile
+            '-level:v', '4.1',               # H.264 level
+            '-pix_fmt', 'yuv420p',
+            '-movflags', '+faststart',       # Optimize for streaming
             output_file
         ]
         
@@ -852,22 +864,25 @@ def concatenate_segments(processed_segments, final_output):
             f.write(f"file '{segment['output_file']}'\n")
     
     try:
-        # Use GPU-accelerated concatenation
+        # Use GPU-accelerated concatenation with better compression
         cmd = [
             'ffmpeg', '-y', '-f', 'concat', '-safe', '0',
             '-i', concat_file,
-            '-c:v', 'h264_nvenc',  # GPU encoding for concatenation
-            '-preset', 'p4',       # Balanced preset
-            '-rc', 'vbr',          # Variable bitrate
-            '-cq', '23',           # Quality
-            '-b:v', '8M',          # Target bitrate
-            '-maxrate', '12M',     # Max bitrate
-            '-bufsize', '16M',     # Buffer size
+            '-c:v', 'h264_nvenc',            # GPU encoding
+            '-preset', ENCODING_PRESET,       # Use same preset
+            '-rc', 'vbr',                    # Variable bitrate
+            '-cq', str(ENCODING_CRF),        # Same quality setting
+            '-b:v', ENCODING_BITRATE,        # Target bitrate
+            '-maxrate', ENCODING_MAXRATE,    # Max bitrate
+            '-bufsize', ENCODING_BUFSIZE,    # Buffer size
+            '-profile:v', 'main',            # H.264 main profile
+            '-level:v', '4.1',               # H.264 level
             '-pix_fmt', 'yuv420p',
+            '-movflags', '+faststart',       # Optimize for streaming
             final_output
         ]
         
-        logging.info("Concatenating with GPU acceleration...")
+        logging.info("Concatenating with optimized GPU compression...")
         subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         logging.info(f"✓ GPU concatenation successful: {final_output}")
         
@@ -946,7 +961,7 @@ def process_segment_wrapper(args):
 def add_audio_to_video(video_file, narration_audio, bgm_audio, final_output, total_duration):
     """Add narration and background music to video using FFmpeg GPU acceleration"""
     try:
-        # Build FFmpeg command with GPU acceleration
+        # Build FFmpeg command with GPU acceleration and better compression
         cmd = ['ffmpeg', '-y']
         
         # Input video
@@ -962,8 +977,16 @@ def add_audio_to_video(video_file, narration_audio, bgm_audio, final_output, tot
         if bgm_exists:
             cmd.extend(['-i', bgm_audio])
         
-        # Video codec - keep existing encoding
-        cmd.extend(['-c:v', 'copy'])  # Copy video without re-encoding
+        # Video codec - re-encode with better compression
+        cmd.extend(['-c:v', 'h264_nvenc'])
+        cmd.extend(['-preset', ENCODING_PRESET])
+        cmd.extend(['-rc', 'vbr'])
+        cmd.extend(['-cq', str(ENCODING_CRF)])
+        cmd.extend(['-b:v', ENCODING_BITRATE])
+        cmd.extend(['-maxrate', ENCODING_MAXRATE])
+        cmd.extend(['-bufsize', ENCODING_BUFSIZE])
+        cmd.extend(['-profile:v', 'main'])
+        cmd.extend(['-level:v', '4.1'])
         
         # Audio processing
         if narration_exists and bgm_exists:
@@ -1003,17 +1026,18 @@ def add_audio_to_video(video_file, narration_audio, bgm_audio, final_output, tot
             cmd.extend(['-map', '0:v'])
             cmd.extend(['-an'])  # No audio
         
-        # Audio codec and settings
+        # Audio codec and settings - optimized for size
         if narration_exists or bgm_exists:
             cmd.extend(['-c:a', 'aac'])
-            cmd.extend(['-b:a', '128k'])
-            cmd.extend(['-ar', '48000'])
+            cmd.extend(['-b:a', '96k'])      # Lower audio bitrate (was 128k)
+            cmd.extend(['-ar', '44100'])     # Lower sample rate (was 48000)
         
-        # Duration and output
+        # Duration and output optimization
         cmd.extend(['-t', str(total_duration)])  # Limit to video duration
+        cmd.extend(['-movflags', '+faststart'])  # Optimize for streaming
         cmd.append(final_output)
         
-        logging.info("Adding audio to video...")
+        logging.info("Adding audio with optimized compression...")
         if narration_exists:
             logging.info(f"  📢 Narration: {narration_audio} (volume: {NARRATION_VOLUME})")
         if bgm_exists:
@@ -1396,18 +1420,23 @@ def process_image_segment_with_progress(segment_info, subtitles, progress_tracke
         
         fbo = ctx.framebuffer(color_attachments=[ctx.texture((WIDTH, HEIGHT), 3)])
         
-        # Setup FFmpeg output with NVIDIA GPU encoding
+        # Setup FFmpeg output with NVIDIA GPU encoding - OPTIMIZED FOR SIZE
         ffmpeg_cmd = [
             'ffmpeg', '-y', '-f', 'rawvideo',
             '-vcodec', 'rawvideo', '-pix_fmt', 'rgb24',
             '-s', f'{WIDTH}x{HEIGHT}', '-r', str(FRAME_RATE),
             '-i', '-', '-an', 
             '-c:v', 'h264_nvenc',
-            '-preset', 'p1',                 # Fastest preset
-            '-tune', 'll',                   # Low latency
-            '-rc', 'cbr',                    # Constant bitrate
-            '-b:v', '6M',                    # Lower bitrate for speed
-            '-pix_fmt', 'yuv420p', 
+            '-preset', ENCODING_PRESET,      # Balanced speed/quality
+            '-rc', 'vbr',                    # Variable bitrate for better compression
+            '-cq', str(ENCODING_CRF),        # Quality-based encoding
+            '-b:v', ENCODING_BITRATE,        # Target bitrate
+            '-maxrate', ENCODING_MAXRATE,    # Max bitrate
+            '-bufsize', ENCODING_BUFSIZE,    # Buffer size
+            '-profile:v', 'main',            # H.264 main profile
+            '-level:v', '4.1',               # H.264 level
+            '-pix_fmt', 'yuv420p',
+            '-movflags', '+faststart',       # Optimize for streaming
             output_file
         ]
         
