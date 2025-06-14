@@ -36,57 +36,77 @@ def check_speaker_line_format(line):
         return False, f"Invalid speaker line format: '{line}'. Expected 'Speaker 1:' or 'Speaker 2:'"
     return True, None
 
-def check_tagged_paragraph(line):
-    pattern = re.compile(r'<p(\d+)\s+image_prompt="[^"]*">.*?</p\1>$')
-    if not pattern.fullmatch(line):
-        return False, f"Line not properly wrapped in paragraph tags with matching numbers and image_prompt: '{line}'"
-    return True, None
-
 def validate_script_lines(lines):
     if len(lines) < 3:
         return False, "No content after voice instruction"
-    idx = 2  # Skip duration and voice instruction
-    while idx < len(lines):
-        line = lines[idx]
-
-        is_speaker, msg = check_speaker_line_format(line)
-        if is_speaker:
-            remainder = line.split(":", 1)[1].strip()
-            if remainder:
-                tag_check, tag_msg = check_tagged_paragraph(remainder)
-                if not tag_check:
-                    return False, f"Invalid inline tagged paragraph at line {idx + 1}: {tag_msg}"
-            idx += 1
-
-            while idx < len(lines):
-                para_line = lines[idx]
-                if re.match(r"^Speaker [12]:", para_line):
-                    break
-                tag_check, tag_msg = check_tagged_paragraph(para_line)
-                if not tag_check:
-                    return False, f"Expected paragraph tag line at line {idx + 1}: {tag_msg}"
-                idx += 1
-        else:
-            return False, f"Expected speaker line at line {idx + 1}, got: '{line}'"
-
+    
+    # Join all lines into a single text block for multi-line parsing
+    full_text = '\n'.join(lines[2:])  # Skip duration and voice instruction
+    
+    # Split by Speaker lines while preserving the speaker markers
+    speaker_sections = re.split(r'(^Speaker [12]:)', full_text, flags=re.MULTILINE)
+    
+    # Remove empty strings and organize into pairs
+    sections = [s for s in speaker_sections if s.strip()]
+    
+    if not sections:
+        return False, "No speaker content found"
+    
+    # Process each speaker section
+    i = 0
+    while i < len(sections):
+        if not re.match(r'^Speaker [12]:$', sections[i]):
+            return False, f"Expected speaker line, got: '{sections[i]}'"
+        
+        if i + 1 >= len(sections):
+            return False, "Speaker line found but no content follows"
+        
+        content = sections[i + 1].strip()
+        
+        # Check if this content contains proper paragraph tags
+        if not validate_paragraph_content(content):
+            return False, f"Invalid paragraph content after {sections[i]}: content must be wrapped in proper <p#> tags with image_prompt"
+        
+        i += 2
+    
     return True, None
+
+def validate_paragraph_content(content):
+    # Find all paragraph tags in the content
+    paragraph_pattern = re.compile(r'<p(\d+)\s+image_prompt="[^"]*">(.*?)</p\1>', re.DOTALL)
+    matches = paragraph_pattern.findall(content)
+    
+    if not matches:
+        return False
+    
+    # Remove all valid paragraph tags and check if anything substantial remains
+    cleaned_content = paragraph_pattern.sub('', content).strip()
+    
+    # Allow only whitespace and newlines to remain
+    if cleaned_content and not re.match(r'^\s*$', cleaned_content):
+        return False
+    
+    return True
 
 def validate_script(filepath):
     with open(filepath, "r", encoding="utf-8") as f:
-        lines = [line.strip() for line in f if line.strip()]
+        lines = [line.rstrip() for line in f]  # Keep empty lines but remove trailing whitespace
+
+    # Filter out completely empty lines for validation but preserve structure
+    non_empty_lines = [line for line in lines if line.strip()]
 
     rules = [
-        check_duration_line,
-        check_voice_instruction,
-        validate_script_lines
+        lambda l: check_duration_line(l),
+        lambda l: check_voice_instruction(l),
+        lambda l: validate_script_lines(l)
     ]
 
     for rule in rules:
-        valid, error = rule(lines)
+        valid, error = rule(non_empty_lines)
         if not valid:
             return False, error
 
-    return True, lines
+    return True, non_empty_lines
 
 # ------------------------ Folder Move and Raw Generation ------------------------
 
@@ -121,14 +141,14 @@ def write_config_file(target_dir, estimated_millis):
                 "estimated_duration_ms": estimated_millis,
                 "speaker1" : "Orus",
                 "speaker2" : "Gacrux",
-                "voice_effect": "telephone"
+                "voice_effect": "none"
             },
             "captions": {},
             "img_prompts": {},
             "image_gen": {},
             "upscale_img": {},
             "img_stitch": {
-                "background_music_file": "curious.mp3" 
+                "background_music_file": "wander.mp3" 
             },
             "vid_edit": {}
         }
@@ -160,14 +180,29 @@ def strip_tags_preserve_text(lines):
     voice_instruction = lines[1].split(":", 1)[1].strip()
     stripped_lines = [voice_instruction]  # Keep the voice instruction
 
-    for line in lines[2:]:  # Skip duration and voice instruction
-        if line.startswith("Speaker"):
-            speaker, rest = line.split(":", 1)
-            text_only = re.sub(r'<p\d+\s+image_prompt="[^"]*">(.*?)</p\d+>', r'\1', rest.strip())
-            stripped_lines.append(f"{speaker}: {text_only}")
+    # Join all content lines after voice instruction for proper multi-line processing
+    full_text = '\n'.join(lines[2:])
+    
+    # Split by Speaker lines while preserving the speaker markers
+    speaker_sections = re.split(r'(^Speaker [12]:)', full_text, flags=re.MULTILINE)
+    
+    # Remove empty strings
+    sections = [s for s in speaker_sections if s.strip()]
+    
+    i = 0
+    while i < len(sections):
+        if re.match(r'^Speaker [12]:$', sections[i]):
+            speaker_line = sections[i].strip()
+            if i + 1 < len(sections):
+                content = sections[i + 1].strip()
+                # Remove paragraph tags with DOTALL flag for multi-line content
+                text_only = re.sub(r'<p\d+\s+image_prompt="[^"]*">(.*?)</p\d+>', r'\1', content, flags=re.DOTALL)
+                # Clean up extra whitespace but preserve line breaks
+                text_only = re.sub(r'\n\s*\n', '\n', text_only.strip())
+                stripped_lines.append(f"{speaker_line} {text_only}")
+            i += 2
         else:
-            text_only = re.sub(r'<p\d+\s+image_prompt="[^"]*">(.*?)</p\d+>', r'\1', line)
-            stripped_lines.append(text_only)
+            i += 1
 
     return stripped_lines
 

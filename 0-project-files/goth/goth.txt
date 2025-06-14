@@ -1,0 +1,95 @@
+duration_estimation_milliseconds: 300000
+voice_instruction: read like an old man with a deep british accent
+Speaker 1: <p1 image_prompt="rusted vending machine that only dispenses rejection letters, flickering light above it buzzing like disappointment">You fumbled the goth mommy. Yeah. You really did. </p1>
+
+<p2 image_prompt="plush heart with a knife in it sitting on a rotating display table under a sign that says ‘AS IS – NO RETURNS’">She gave you a look that said ‘ruin me or enlighten me’—and you responded like a substitute math teacher asking where the bathroom is.</p2>
+
+<p3 image_prompt="a cobwebbed bookshelf labeled ‘how to talk to women’ with every book missing except one: 'Chapter 1 – Do Not Speak'">You opened with a dad joke.
+She had neck tattoos and a playlist named ‘unholy communion.’
+And you asked if she liked Marvel movies.
+Game is game.</p3>
+
+<p4 image_prompt="an alley full of love letters folded into paper airplanes, all crashed, all soggy, one labeled ‘u up?’ written in Comic Sans">She posted a thirst trap. You replied, ‘haha vibes.’
+You typed ‘queen’ and hit send like it was currency.
+No context. No substance. No spell resistance.
+You think words are spells. You forgot to roll for charisma.</p4>
+
+<p5 image_prompt="old Nokia phone duct-taped to a sage bundle, buzzing nonstop, but only from notifications that say 'she’s not into you, bro'">I once dated a goth girl who had a pet raven named Carl.
+Not short for anything. Just Carl.
+She made me walk him on a leash made of teeth.
+Did I ask questions? No. I simply adjusted.</p5>
+
+<p6 image_prompt="photo album titled ‘what could’ve been,’ full of blurry selfies, ghost emojis, and screenshots of ‘last seen 2h ago’">You asked her what her rising sign was.
+She said Scorpio, Pisces moon, death in Venus.
+You said ‘cool I’m a Sagittarius I think.’
+She said nothing.
+The silence hit different.
+That was not rejection. That was spiritual evaporation.</p6>
+
+<p7 image_prompt="a museum exhibit titled ‘Ls Taken,’ featuring shattered ego statues and a shattered ego guestbook">You cannot ‘out-nice’ someone into passion.
+You cannot meme your way into her trauma.
+She wanted a co-pilot for the abyss.
+You showed up with a bucket hat and an air fryer.</p7>
+
+<p8 image_prompt="treadmill in a cemetery, still running, with sneakers left behind mid-stride; nearby tombstone reads 'he tried, kind of'">She asked, “Do you ever think about the void?”
+You said, “Haha yeah like Mondays, right?”
+She vanished like mist.
+She did not block you.
+She transcended you.</p8>
+
+<p9 image_prompt="a plastic participation trophy melting in the sun, engraved with 'at least you showed up (barely)'">There is no shame here.
+Only data.
+You logged a failure. That is experience now.
+Level one bard. No charisma. But hey—you are in the game.</p9>
+
+<p10 image_prompt="cracked crystal ball showing a slideshow of every cringe moment in your DMs; fortune cookie beside it reads 'she saw the meme'">I once sent a goth girl a Spotify playlist called ‘Moonlit Angst.’
+She sent back one called ‘Try Again Never.’
+I respected that.
+Game was played.
+She won.
+I learned.</p10>
+
+<p11 image_prompt="calendar page with every date scratched out except one: 'THE DAY SHE SAID “you’re sweet” – autopsy pending'">You heard “you’re sweet” and thought it was hope.
+It was not.
+That was the kindness before the execution.</p11>
+
+<p12 image_prompt="old arcade machine titled ‘FLIRTING: THE GAME’, screen cracked, coin slot jammed with quarters, scoreboard says 'YOU – 0'">You tried.
+You lost.
+The universe gave you one side quest: hold her interest for 3 minutes.
+You got distracted by her septum ring and started talking about your podcast idea.</p12>
+
+<p13 image_prompt="haunted photo booth with photos of failed flirts stuck to the walls; each one has 'nice guy energy detected' burned into the corner">She once wore a shirt that said ‘Eat The Rich’ and you replied, ‘Haha I love that show!’
+Brother.
+That was not a reference.
+That was a manifesto.
+And you turned it into Netflix small talk.</p13>
+
+<p14 image_prompt="weathered tombstone that reads 'Here lies your shot – it had potential' surrounded by pigeons judging you">You do not need to feel bad.
+She was lightning.
+You were dry grass.
+There was no version of this where you did not catch fire.</p14>
+
+<p15 image_prompt="snow globe filled with tears, tiny figurines inside reenacting the moment she said ‘you’re like a brother to me’">You were not friendzoned.
+You were lore-dropped.
+She will tell the tale at brunch like a ghost story.
+And everyone will nod.</p15>
+
+<p16 image_prompt="tattered journal titled 'notes on her eyeliner,' every page smudged by tears and bad takes">Next time, do not quote The Office.
+Next time, do not say “you’re not like other girls.”
+Next time—
+Wait.
+There might not be a next time.
+Game is game.</p16>
+
+<p17 image_prompt="a bench under a blood moon, plaque reads ‘For the ones who almost pulled it off’">So light a candle.
+Write a haiku.
+Get in the gym.
+Learn what ‘moon in the eighth house’ means.
+And if another goth mommy crosses your path?
+Look her in the eyes.
+Say nothing dumb.
+And remember—</p17>
+
+<p18 image_prompt="t-shirt hanging in a thrift store, reads 'She Was Never Yours – It Was Just Your Turn To Lose'">You were never the villain.
+Just the backstory.
+But damn if you were not almost interesting.</p18>

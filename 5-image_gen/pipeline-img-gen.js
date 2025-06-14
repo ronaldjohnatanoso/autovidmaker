@@ -82,10 +82,18 @@ const MAX_TIMEOUTS = 3; //maximum number of timeouts before giving up
     defaultViewport: null,
   });
 
+
+
   // Step 5: Open a new tab
   const page = (await browser.pages())[0] || (await browser.newPage());
   await page.goto("http://www.meta.ai", {
     waitUntil: "networkidle2",
+  });
+  // Set viewport to full screen
+  await page.setViewport({
+    width: 1920,
+    height: 1080,
+    deviceScaleFactor: 1,
   });
 
   // Check if prompts are already done
@@ -136,7 +144,7 @@ const MAX_TIMEOUTS = 3; //maximum number of timeouts before giving up
 
     await delay(520); // Wait a bit to see the text
     //img promts
-    await page.keyboard.type("Imagine " + text);
+    await page.keyboard.type("Create an image " + text);
     console.log(`📝 Entered prompt: ${text}`);
 
     //check img size first
@@ -238,7 +246,8 @@ const MAX_TIMEOUTS = 3; //maximum number of timeouts before giving up
       downloadPath: tempDownloadPath, // Update to use tempDownloadPath
     });
     console.log(`📁 Downloads will be saved to: ${tempDownloadPath}`); // Update log message
-    // await delay(1000*60); // Wait for download to start
+    // await delay(1000*30); // Wait for download to start
+
 
     // await page.waitForSelector(
     //   "div.xc26acl > div > div > div:nth-of-type(1) div:nth-of-type(1) > svg"

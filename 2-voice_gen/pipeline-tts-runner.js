@@ -103,18 +103,18 @@ function delay(ms) {
 
   await delay(500);
 
-  // Click model dropdown
-  await page.waitForSelector("#model-selector > div", { visible: true });
-  await page.click("#model-selector > div");
-  console.log("🖱 Clicked model dropdown");
+  // // Click model dropdown
+  // await page.waitForSelector("#model-selector > div", { visible: true });
+  // await page.click("#model-selector > div");
+  // console.log("🖱 Clicked model dropdown");
 
-  // Select Gemini 2.5 Pro Preview TTS
-  await page.waitForSelector("#mat-option-1 div.base-model-subtitle", {
-    visible: true,
-  });
-  await page.click("#mat-option-1 div.base-model-subtitle");
-  console.log("🎯 Selected Gemini 2.5 Pro Preview TTS");
-  await delay(500);
+  // // Select Gemini 2.5 Pro Preview TTS
+  // await page.waitForSelector("#mat-option-1 div.base-model-subtitle", {
+  //   visible: true,
+  // });
+  // await page.click("#mat-option-1 div.base-model-subtitle");
+  // console.log("🎯 Selected Gemini 2.5 Pro Preview TTS");
+  // await delay(500);
 
   // Click first voice settings expansion panel toggle (Zephyr)
   await page.waitForSelector(

@@ -30,8 +30,8 @@ STAGE_CONFIG = {
     }
     ,
     "img_stitch": {
-        "inputs": ["{name}_img_prompts.json", "upscaled_images"],
-        "command": ["python", "7-img_stitch/run.py", "{name}", "--render"],
+        "inputs": ["{name}_img_prompts.json", "upscaled_images", "images_1080p"],
+        "command": ["python", "7-img_stitch/opengl-gpu-render.py", "{name}", "--shader", "hypnotic.glsl"],
     },
 }
 

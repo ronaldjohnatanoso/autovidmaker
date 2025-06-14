@@ -1,7 +1,11 @@
 #!/bin/bash
 
 PROFILE_NAME="Profile 1"
-CHROME_USER_DATA_DIR="$HOME/.config/google-chrome"
+# Use a custom directory instead of the default Chrome directory
+CHROME_USER_DATA_DIR="$HOME/.config/chrome-debug"
+
+# Create the directory if it doesn't exist
+mkdir -p "$CHROME_USER_DATA_DIR"
 
 google-chrome \
   --headless=new \
@@ -20,6 +24,3 @@ google-chrome \
   --use-mock-keychain \
   --disable-popup-blocking \
   --disable-features=ChromeWhatsNewUI \
-  --no-sandbox \
-   --disable-dev-shm-usage \
-  

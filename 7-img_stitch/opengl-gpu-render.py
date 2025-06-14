@@ -42,9 +42,9 @@ WIDTH = 1920
 HEIGHT = 1080
 FRAME_RATE = 30
 VRAM_THRESHOLD = 0.95
-SEGMENT_DURATION = 10
+SEGMENT_DURATION = 20
 MAX_WORKERS = 6
-SUBTITLE_FONT_SIZE = 64 * 2
+SUBTITLE_FONT_SIZE = 64 + 32
 
 # Optimized encoding settings for size/speed balance
 ENCODING_PRESET = 'p4'      # Balanced preset (p1=fastest, p7=slowest)
@@ -55,8 +55,8 @@ ENCODING_BUFSIZE = '8M'     # Buffer size
 
 # Audio settings
 BACKGROUND_MUSIC_FILE = "wander.mp3"  # Change this to your BGM filename
-BGM_VOLUME = 0.5                     # Background music volume (0.0 to 1.0)
-NARRATION_VOLUME = 1.0                # Narration audio volume (0.0 to 1.0)
+BGM_VOLUME = 0.4                    # Background music volume (0.0 to 1.0)
+NARRATION_VOLUME = 1.5                # Narration audio volume (0.0 to 1.0)
 
 # Set to True to only process and preview first 10 seconds
 PREVIEW_MODE = False
@@ -207,7 +207,7 @@ def parse_srt_file(srt_path):
     logging.info(f"Loaded {len(subtitles)} subtitle entries")
     return subtitles
 
-def create_text_texture(text, font_size=48, max_width=1600):
+def create_text_texture(text, font_size=36, max_width=1600):
     """Create text texture with stroke effect for GPU rendering"""
     if not text or text.strip() == "":
         # Return empty texture
@@ -1079,6 +1079,88 @@ def find_audio_files(project_name, script_dir):
     
     return narration_audio, bgm_audio
 
+def create_vertical_version(input_video, output_video):
+    """Create 9:16 vertical version by cropping center of 1920x1080 video"""
+    try:
+        # Calculate crop dimensions for 9:16 aspect ratio
+        # Target: 1080x1920 (9:16)
+        # Source: 1920x1080 (16:9)
+        
+        source_width = 1920
+        source_height = 1080
+        target_width = 1080
+        target_height = 1920
+        
+        # For 9:16 from 16:9, we need to crop width and scale height
+        # First, determine what width we need to crop to get 9:16 ratio
+        # 1080 height * (9/16) = 607.5, but we want 1080 width
+        # So we keep 1080 width and crop height, then scale up
+        
+        crop_width = int(source_height * 9 / 16)  # 607.5 -> 608
+        crop_height = source_height  # 1080
+        
+        # Center the crop horizontally
+        crop_x = (source_width - crop_width) // 2  # (1920 - 608) / 2 = 656
+        crop_y = 0
+        
+        # Try GPU encoding first with more compatible settings
+        cmd_gpu = [
+            'ffmpeg', '-y',
+            '-i', input_video,
+            '-vf', f'crop={crop_width}:{crop_height}:{crop_x}:{crop_y},scale={target_width}:{target_height}',
+            '-c:v', 'h264_nvenc',
+            '-preset', 'p1',                 # Fastest preset for quick processing
+            '-b:v', '8M',                    # Use bitrate instead of CQP for compatibility
+            '-maxrate', '12M',               # Max bitrate
+            '-bufsize', '16M',               # Buffer size
+            '-c:a', 'copy',                  # Copy audio without re-encoding
+            output_video
+        ]
+        
+        logging.info(f"Creating vertical version: {output_video}")
+        logging.info(f"Crop: {crop_width}x{crop_height} from center, scale to {target_width}x{target_height}")
+        
+        try:
+            # First attempt with GPU encoding
+            result = subprocess.run(cmd_gpu, check=True, capture_output=True, text=True)
+            logging.info(f"✅ Vertical version created with GPU encoding: {output_video}")
+            
+        except subprocess.CalledProcessError as e:
+            logging.warning(f"GPU encoding failed (exit code {e.returncode}), trying CPU encoding...")
+            if e.stderr:
+                logging.warning(f"GPU error: {e.stderr}")
+            
+            # Fallback to CPU encoding
+            cmd_cpu = [
+                'ffmpeg', '-y',
+                '-i', input_video,
+                '-vf', f'crop={crop_width}:{crop_height}:{crop_x}:{crop_y},scale={target_width}:{target_height}',
+                '-c:v', 'libx264',           # CPU encoding
+                '-preset', 'medium',         # Balanced CPU preset
+                '-crf', '20',                # Constant Rate Factor for good quality
+                '-c:a', 'copy',              # Copy audio without re-encoding
+                output_video
+            ]
+            
+            result = subprocess.run(cmd_cpu, check=True, capture_output=True, text=True)
+            logging.info(f"✅ Vertical version created with CPU encoding: {output_video}")
+        
+        # Check output file size
+        if os.path.exists(output_video):
+            file_size = os.path.getsize(output_video) / (1024 * 1024)  # MB
+            logging.info(f"📊 Vertical video size: {file_size:.2f} MB")
+        else:
+            raise Exception("Output file was not created")
+            
+    except subprocess.CalledProcessError as e:
+        logging.error(f"❌ Failed to create vertical version: {e}")
+        if hasattr(e, 'stderr') and e.stderr:
+            logging.error(f"FFmpeg stderr: {e.stderr}")
+        raise
+    except Exception as e:
+        logging.error(f"❌ Vertical video creation error: {e}")
+        raise
+
 def main():
     # Move global declaration to the top of the function
     global PREVIEW_MODE, active_executors, active_multiprocessing_processes, SEGMENT_DURATION
@@ -1149,6 +1231,9 @@ def main():
                 project_dir = script_dir.parent / "0-project-files" / args.project_name
                 suffix = "_preview" if PREVIEW_MODE else ""
                 final_output = str(project_dir / f"{args.project_name}{suffix}.mp4")
+            
+            # Create vertical output path
+            vertical_output = final_output.replace('.mp4', '_vertical.mp4')
             
             # Create temporary video output (without audio)
             temp_video_output = final_output.replace('.mp4', '_temp_video.mp4')
@@ -1349,15 +1434,27 @@ def main():
             # Check if output file exists and show size
             if os.path.exists(final_output):
                 file_size = os.path.getsize(final_output) / (1024 * 1024)  # MB
-                logging.info(f"📊 Output file size: {file_size:.2f} MB")
-                logging.info(f"📁 Video saved at: {final_output}")
+                logging.info(f"📊 Landscape output file size: {file_size:.2f} MB")
+                logging.info(f"📁 Landscape video saved at: {final_output}")
                 
-                # FORCE PREVIEW TO START
+                # Create vertical version
+                logging.info("📱 Creating vertical (9:16) version...")
+                try:
+                    create_vertical_version(final_output, vertical_output)
+                    logging.info(f"✅ Both versions created successfully!")
+                    logging.info(f"🖥️  Landscape (16:9): {final_output}")
+                    logging.info(f"📱 Vertical (9:16): {vertical_output}")
+                    
+                except Exception as e:
+                    logging.error(f"Failed to create vertical version: {e}")
+                    logging.info(f"🖥️  Landscape version still available: {final_output}")
+                
+                # FORCE PREVIEW TO START (show landscape version)
                 if PREVIEW_MODE:
-                    logging.info("🎬 LAUNCHING VIDEO PREVIEW NOW...")
+                    logging.info("🎬 LAUNCHING LANDSCAPE VIDEO PREVIEW NOW...")
                     play_video_preview(final_output)
                 else:
-                    logging.info(f"🎥 To preview the video, run: python {__file__} {args.project_name} --preview")
+                    logging.info(f"🎥 To preview landscape video: python {__file__} {args.project_name} --preview")
             else:
                 logging.error("❌ Output file was not created!")
     
