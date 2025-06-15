@@ -50,10 +50,25 @@ def transcribe_word_level_srt(project_name):
     # 🧭 Resolve path relative to this script
     script_dir = os.path.dirname(os.path.abspath(__file__))
     base_dir = os.path.abspath(os.path.join(script_dir, "..", "0-project-files", project_name))
-    audio_path = os.path.join(base_dir, f"{project_name}.wav")
+    
+    # Try multiple possible audio file names in order of preference
+    audio_candidates = [
+        f"{project_name}_original.wav",
+        f"{project_name}.wav"
+    ]
 
-    if not os.path.isfile(audio_path):
-        print(f"[ERROR] Audio file not found at: {audio_path}")
+    audio_path = None
+    for candidate in audio_candidates:
+        candidate_path = os.path.join(base_dir, candidate)
+        if os.path.isfile(candidate_path):
+            audio_path = candidate_path
+            print(f"[INFO] Using audio file: {candidate}")
+            break
+
+    if audio_path is None:
+        print(f"[ERROR] No audio file found. Searched for:")
+        for candidate in audio_candidates:
+            print(f"  - {os.path.join(base_dir, candidate)}")
         sys.exit(1)
 
     model = whisperx.load_model("small.en", device=device, compute_type=compute_type)

@@ -1,0 +1,43 @@
+duration_estimation_milliseconds: 300000
+voice_instruction: read with an angry hood accent
+Speaker 1:
+
+<p1 image_prompt="controller on the floor, job board untouched, pizza box open">Boy, look at you. Just look at you. Ain’t got no job, no money, no bitches, no drive — just vibes and body odor. You sittin' in the same crusty ass boxers, smellin’ like broken promises and hot Cheeto dust. Bum ass n**a.*</p1>
+
+<p2 image_prompt="phone cracked, Instagram open, bank app shows -$17.45">You out here double tappin’ baddies with a -$17 bank account. No hoes, no dough, no goals. N***a, you a financial ghost. A broke-ass spirit. You scaring your own money away.</p2>
+
+<p3 image_prompt="Google search: 'what job is like easy but pays like a lot'">You out here Googlin’ “jobs that pay hella but don’t require effort.” Bro. You ain’t lookin’ for employment, you lookin’ for a miracle. Get yo lazy, shortcut-searchin’, can’t-read-the-fine-print ass off my Wi-Fi.</p3>
+
+<p4 image_prompt="empty fridge, user drinking tap water with protein powder">You so broke you out here makin’ struggle smoothies. Tap water and vibes, talkin’ bout “bulking season.” Bulking for what? You ain’t even lifting responsibility, dog-ass n***a.</p4>
+
+<p5 image_prompt="speaker pointing at job rejection email with 14 grammar errors">Your resume look like it was typed by a drunk possum. Spelled “professional” as “profeshional.” N***a, even autocorrect gave up on you. You got ChatGPT and still sound like a dropout. Dusty keyboard-using ass.</p5>
+
+<p6 image_prompt="friend getting new job, you clapping in background holding controller">All your homies bossin’ up and here you go, the designated “yo that’s lit” friend. You everybody’s cheerleader ‘cause you ain’t got no motion. You clappin’ at other folks’ success like that’s your LinkedIn endorsement. No path-having ass.</p6>
+
+<p7 image_prompt="TikTok open: 'how to manifest money', background shows overdue bills">Boy you sittin' there tryin' to manifest money with incense and vibes. N***a you need to manifest a schedule. Ain’t no vision board saving you from poverty. That’s not the law of attraction, that’s the law of ain’t shit.</p7>
+
+<p8 image_prompt="search history: 'how to lie about experience on resume'">You tryin’ to finesse the system but can’t even finesse a basic sentence. You lied on your resume and still ain’t get hired. Even the lies weren’t convincing. You a fraud and a failure, n**a.*</p8>
+
+<p9 image_prompt="mirror shows self saying 'we gon' get it soon', 8 months later same reflection">Every morning you give yourself that little pep talk — “we gon’ get it.” Bro, it’s June. You been gon’ get it since January. Lying to yourself with confidence. Narcissist with no achievements.</p9>
+
+<p10 image_prompt="girl leaving you on read after you said 'I'm between opportunities'">You out here tellin' shorties you “between jobs” like that sound sexy. Boy you been between jobs for two damn years. What you between? Hope and depression? No hoes gettin’ ass n**a.*</p10>
+
+<p11 image_prompt="recruiter messages you, you leave them on seen 'cause you too lazy">A recruiter slid in your inbox and you left them on read like you the catch. Boy, you unemployed. You ain't playin' hard to get, you just hard to employ. You allergic to opportunity, dumb-ass n***a.</p11>
+
+<p12 image_prompt="calendar with motivational quotes but no events">Your calendar say “grind hard, shine later” but all you done this month is smoke and play 2K. You ain’t grinding, you glitchin’. You livin’ like a side quest character in GTA.</p12>
+
+<p13 image_prompt="clothes wrinkled, breath hot, attitude confident">You out here musty, unemployed, and still somehow cocky. No deodorant. No income. Maximum ego. N***a, you stank AND broke. That’s a federal crime.</p13>
+
+<p14 image_prompt="mock interview question: 'What motivates you?' you answer: 'hunger'">You got asked what motivates you and you said “hunger.” Boy if you don’t shut yo poetic, starving-artist, ramen-powered-ass up. Motivation ain’t enough. Get skills, dummy.</p14>
+
+<p15 image_prompt="resume says 'self-taught visionary', job application deleted">You wrote “self-taught visionary” on your resume like that mean somethin’. You not a visionary. You just unemployed with Wi-Fi and ideas that don’t pay rent. Hallucinating success-having ass.</p15>
+
+<p16 image_prompt="YouTube video: 'I QUIT MY 9 TO 5 AND MADE MILLIONS' playing while you eat cereal at 3PM">You watching people quit jobs you ain’t even qualified to apply for. N***a, you ain’t stuck in the matrix — you never logged in. You a background character in your own life.</p16>
+
+<p17 image_prompt="girl asks 'so what do you do?' you reply 'I'm working on me'">Shorty asked what you do and you said “I’m working on me.” Nah. You workin’ on nothing. You unemployed with a self-care routine and no self-respect. Get off them crystals and fill out a W-2, n*a.**</p17>
+
+<p18 image_prompt="bathroom mirror has sticky note: 'grind now, shine later', covered in toothpaste">You left sticky notes with motivational quotes like that’s gonna change your situation. You motivational, but broke. You inspirational, but useless. You broke Gandhi-ass n**a.*</p18>
+
+<p19 image_prompt="mirror reflects you in pajama pants, successful you shaking his head">The version of you who got it together? He disgusted. He lookin’ at you like “Damn, bro. You still here? Still broke? Still blamin’ capitalism when you can’t even spell resume?”</p19>
+
+<p20 image_prompt="speaker walking away, shaking head, camera zooms on you in shame">I ain’t even mad no more. I’m just disappointed. You could’ve been something. But you’d rather scroll, smoke, and pretend. So keep playin’, no-job-havin’, no-hoes-gettin’, no-goal-settin’ bum-ass n*a**. The world movin’. And you? You still on pause.</p20>

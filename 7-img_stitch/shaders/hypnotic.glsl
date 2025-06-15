@@ -91,9 +91,9 @@ vec3 effect_glitch(vec3 input_color, vec2 uv_coords, float time) {
 vec3 effect_hardcore_vignette(vec3 input_color, vec2 uv_coords, float time) {
     vec2 vignette_center = uv_coords - 0.5;
     
-    // Pulsating vignette strength
+    // Pulsating vignette strength - reduced values for smaller reach
     float pulse = sin(time * 3.0) * 0.5 + 0.5;
-    float vignette_strength = 2.0 + pulse * 2.0; // 2.0 to 4.0 intensity
+    float vignette_strength = 1.1 + pulse * 0.6; // 1.2 to 1.8 intensity (reduced from 2.0-4.0)
     
     float vignette_factor = 1.0 - dot(vignette_center, vignette_center) * vignette_strength;
     vignette_factor = max(vignette_factor, 0.1); // Prevent complete blackout

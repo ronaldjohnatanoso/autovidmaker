@@ -139,16 +139,16 @@ def write_config_file(target_dir, estimated_millis):
         "stages": {
             "voice_gen": {
                 "estimated_duration_ms": estimated_millis,
-                "speaker1" : "Orus",
+                "speaker1" : "Sadachbia",
                 "speaker2" : "Gacrux",
-                "voice_effect": "none"
+                "voice_effect": "telephone"
             },
             "captions": {},
             "img_prompts": {},
             "image_gen": {},
             "upscale_img": {},
             "img_stitch": {
-                "background_music_file": "wander.mp3" 
+                "background_music_file": "horror_wind.mp3" 
             },
             "vid_edit": {}
         }

@@ -1,4 +1,4 @@
-duration_estimation_milliseconds: 300000
+duration_estimation_milliseconds: 
 voice_instruction: Read this with eagerness like a motivational speaker.
 Speaker 1:
 

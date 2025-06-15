@@ -40,10 +40,10 @@ logging.basicConfig(
 # Video output settings
 WIDTH = 1920
 HEIGHT = 1080
-FRAME_RATE = 30
+FRAME_RATE = 24
 VRAM_THRESHOLD = 0.95
 SEGMENT_DURATION = 20
-MAX_WORKERS = 6
+MAX_WORKERS =  8  # Max number of parallel workers
 SUBTITLE_FONT_SIZE = 64 + 32
 
 # Optimized encoding settings for size/speed balance
@@ -54,8 +54,8 @@ ENCODING_MAXRATE = '6M'     # Max bitrate cap
 ENCODING_BUFSIZE = '8M'     # Buffer size
 
 # Audio settings
-BACKGROUND_MUSIC_FILE = "wander.mp3"  # Change this to your BGM filename
-BGM_VOLUME = 0.4                    # Background music volume (0.0 to 1.0)
+BACKGROUND_MUSIC_FILE = "hatdog.mp3"  # Change this to your BGM filename
+BGM_VOLUME = 1                    # Background music volume (0.0 to 1.0)
 NARRATION_VOLUME = 1.5                # Narration audio volume (0.0 to 1.0)
 
 # Set to True to only process and preview first 10 seconds
@@ -522,7 +522,7 @@ def get_gpu_memory_usage():
         logging.warning(f"Failed to retrieve GPU memory usage: {e}")
         return 0
 
-def process_image_segment(segment_info, subtitles, progress_queue=None, shader_file="fragment.glsl"):
+def process_image_segment(segment_info, subtitles, progress_queue=None, shader_file="hypnotic.glsl"):
     """Process one video segment with shader effects applied to image timeline"""
     global active_processes, active_contexts
     
@@ -1061,9 +1061,31 @@ def find_audio_files(project_name, script_dir):
     narration_file = project_dir / f"{project_name}.wav"
     narration_audio = str(narration_file) if narration_file.exists() else None
     
-    # Find background music
+    # Read background music file from config
+    config_file = project_dir / "config.json"
+    background_music_file = BACKGROUND_MUSIC_FILE  # Default fallback
+    
+    if config_file.exists():
+        try:
+            import json
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+            
+            # Get background music file from config
+            bg_music_from_config = config.get("stages", {}).get("img_stitch", {}).get("background_music_file")
+            if bg_music_from_config:
+                background_music_file = bg_music_from_config
+                logging.info(f"📄 Using background music from config: {background_music_file}")
+            else:
+                logging.info(f"📄 No background music specified in config, using default: {background_music_file}")
+        except Exception as e:
+            logging.warning(f"⚠️  Failed to read config file: {e}, using default background music")
+    else:
+        logging.info(f"📄 No config file found, using default background music: {background_music_file}")
+    
+    # Find background music in common_assets
     common_assets_dir = script_dir.parent / "common_assets"
-    bgm_file = common_assets_dir / BACKGROUND_MUSIC_FILE
+    bgm_file = common_assets_dir / background_music_file
     bgm_audio = str(bgm_file) if bgm_file.exists() else None
     
     # Log what we found
@@ -1075,90 +1097,117 @@ def find_audio_files(project_name, script_dir):
     if bgm_audio:
         logging.info(f"🎵 Found background music: {bgm_audio}")
     else:
-        logging.info(f"⚠️  No background music found: {common_assets_dir / BACKGROUND_MUSIC_FILE}")
+        logging.info(f"⚠️  No background music found: {common_assets_dir / background_music_file}")
     
     return narration_audio, bgm_audio
 
 def create_vertical_version(input_video, output_video):
-    """Create 9:16 vertical version by cropping center of 1920x1080 video"""
+    """Create 1080x1080 square version by center-cropping the landscape video"""
     try:
-        # Calculate crop dimensions for 9:16 aspect ratio
-        # Target: 1080x1920 (9:16)
-        # Source: 1920x1080 (16:9)
-        
+        # Original dimensions
         source_width = 1920
         source_height = 1080
+        
+        # Target square dimensions
         target_width = 1080
-        target_height = 1920
+        target_height = 1080
         
-        # For 9:16 from 16:9, we need to crop width and scale height
-        # First, determine what width we need to crop to get 9:16 ratio
-        # 1080 height * (9/16) = 607.5, but we want 1080 width
-        # So we keep 1080 width and crop height, then scale up
-        
-        crop_width = int(source_height * 9 / 16)  # 607.5 -> 608
-        crop_height = source_height  # 1080
+        # Calculate crop to get square from center
+        # Since we want 1080x1080 from 1920x1080, we crop the width
+        crop_width = target_width   # 1080 (crop to square)
+        crop_height = target_height # 1080 (keep full height)
         
         # Center the crop horizontally
-        crop_x = (source_width - crop_width) // 2  # (1920 - 608) / 2 = 656
-        crop_y = 0
+        crop_x = (source_width - crop_width) // 2  # (1920 - 1080) / 2 = 420
+        crop_y = 0  # No vertical cropping needed
         
-        # Try GPU encoding first with more compatible settings
+        # OPTIMIZED SETTINGS FOR SMALLER FILE SIZE
         cmd_gpu = [
             'ffmpeg', '-y',
             '-i', input_video,
-            '-vf', f'crop={crop_width}:{crop_height}:{crop_x}:{crop_y},scale={target_width}:{target_height}',
+            '-vf', f'crop={crop_width}:{crop_height}:{crop_x}:{crop_y}',  # Simple center crop
             '-c:v', 'h264_nvenc',
-            '-preset', 'p1',                 # Fastest preset for quick processing
-            '-b:v', '8M',                    # Use bitrate instead of CQP for compatibility
-            '-maxrate', '12M',               # Max bitrate
-            '-bufsize', '16M',               # Buffer size
-            '-c:a', 'copy',                  # Copy audio without re-encoding
+            '-preset', 'p6',                 # Slower preset = better compression
+            '-rc', 'vbr',                    # Variable bitrate
+            '-cq', '26',                     # Slightly better quality for square format
+            '-b:v', '3M',                    # Higher bitrate for square (more detail)
+            '-maxrate', '4M',                # Higher max bitrate
+            '-bufsize', '6M',                # Larger buffer
+            '-profile:v', 'main',            # H.264 main profile
+            '-level:v', '4.1',               # H.264 level
+            '-pix_fmt', 'yuv420p',
+            '-movflags', '+faststart',       # Optimize for streaming
+            '-c:a', 'aac',                   # Re-encode audio with good quality
+            '-b:a', '128k',                  # Standard audio bitrate
+            '-ar', '44100',                  # Standard sample rate
             output_video
         ]
         
-        logging.info(f"Creating vertical version: {output_video}")
-        logging.info(f"Crop: {crop_width}x{crop_height} from center, scale to {target_width}x{target_height}")
+        logging.info(f"Creating square version: {output_video}")
+        logging.info(f"Duration: {target_width}x{target_height} (SQUARE)")
+        logging.info(f"Crop: {crop_width}x{crop_height} from position ({crop_x},{crop_y})")
+        logging.info(f"Cropping {source_width - crop_width}px from sides ({crop_x}px from each side)")
         
         try:
-            # First attempt with GPU encoding
+            # Try optimized GPU encoding
             result = subprocess.run(cmd_gpu, check=True, capture_output=True, text=True)
-            logging.info(f"✅ Vertical version created with GPU encoding: {output_video}")
+            logging.info(f"✅ Square version created with GPU encoding")
             
         except subprocess.CalledProcessError as e:
-            logging.warning(f"GPU encoding failed (exit code {e.returncode}), trying CPU encoding...")
+            logging.warning(f"GPU encoding failed, trying CPU...")
             if e.stderr:
                 logging.warning(f"GPU error: {e.stderr}")
             
-            # Fallback to CPU encoding
+            # Fallback to CPU with good compression
             cmd_cpu = [
                 'ffmpeg', '-y',
                 '-i', input_video,
-                '-vf', f'crop={crop_width}:{crop_height}:{crop_x}:{crop_y},scale={target_width}:{target_height}',
+                '-vf', f'crop={crop_width}:{crop_height}:{crop_x}:{crop_y}',
                 '-c:v', 'libx264',           # CPU encoding
-                '-preset', 'medium',         # Balanced CPU preset
-                '-crf', '20',                # Constant Rate Factor for good quality
-                '-c:a', 'copy',              # Copy audio without re-encoding
+                '-preset', 'medium',         # Good balance for CPU
+                '-crf', '23',                # Good quality for square format
+                '-profile:v', 'main',        # H.264 main profile
+                '-level:v', '4.1',
+                '-pix_fmt', 'yuv420p',
+                '-c:a', 'aac',               # Re-encode audio
+                '-b:a', '128k',              # Standard audio bitrate
+                '-ar', '44100',              # Standard sample rate
+                '-movflags', '+faststart',
                 output_video
             ]
             
             result = subprocess.run(cmd_cpu, check=True, capture_output=True, text=True)
-            logging.info(f"✅ Vertical version created with CPU encoding: {output_video}")
+            logging.info(f"✅ Square version created with CPU encoding")
         
-        # Check output file size
-        if os.path.exists(output_video):
-            file_size = os.path.getsize(output_video) / (1024 * 1024)  # MB
-            logging.info(f"📊 Vertical video size: {file_size:.2f} MB")
+        # Compare file sizes and show info
+        if os.path.exists(output_video) and os.path.exists(input_video):
+            original_size = os.path.getsize(input_video) / (1024 * 1024)  # MB
+            square_size = os.path.getsize(output_video) / (1024 * 1024)  # MB
+            
+            # Calculate area comparison
+            original_area = source_width * source_height  # 1920 * 1080 = 2,073,600
+            square_area = target_width * target_height    # 1080 * 1080 = 1,166,400
+            area_ratio = (square_area / original_area) * 100  # ~56.25%
+            
+            logging.info(f"📊 File size comparison:")
+            logging.info(f"  Original landscape (1920x1080): {original_size:.2f} MB")
+            logging.info(f"  Square (1080x1080): {square_size:.2f} MB")
+            logging.info(f"  Square shows {area_ratio:.1f}% of original area")
+            logging.info(f"  Cropped out: {source_width - target_width}px from sides (420px each side)")
+            
+            compression_ratio = (square_size / original_size) * 100
+            logging.info(f"  Square file is {compression_ratio:.1f}% of original size")
+            
         else:
-            raise Exception("Output file was not created")
+            raise Exception("Square output file was not created")
             
     except subprocess.CalledProcessError as e:
-        logging.error(f"❌ Failed to create vertical version: {e}")
+        logging.error(f"❌ Failed to create square version: {e}")
         if hasattr(e, 'stderr') and e.stderr:
             logging.error(f"FFmpeg stderr: {e.stderr}")
         raise
     except Exception as e:
-        logging.error(f"❌ Vertical video creation error: {e}")
+        logging.error(f"❌ Square video creation error: {e}")
         raise
 
 def main():
