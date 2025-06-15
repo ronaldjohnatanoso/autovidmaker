@@ -1210,6 +1210,46 @@ def create_vertical_version(input_video, output_video):
         logging.error(f"❌ Square video creation error: {e}")
         raise
 
+def get_project_config(project_name, script_dir):
+    """Read project configuration from config.json"""
+    project_dir = script_dir.parent / "0-project-files" / project_name
+    config_file = project_dir / "config.json"
+    
+    config = {}
+    if config_file.exists():
+        try:
+            import json
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+            logging.info(f"📄 Loaded project config from: {config_file}")
+        except Exception as e:
+            logging.warning(f"⚠️  Failed to read config file: {e}")
+    else:
+        logging.info(f"📄 No config file found at: {config_file}")
+    
+    return config
+
+def get_shader_from_config(project_name, script_dir, default_shader="fragment.glsl"):
+    """Get shader file from project config"""
+    config = get_project_config(project_name, script_dir)
+    
+    # Get shader from config
+    shader_from_config = config.get("stages", {}).get("img_stitch", {}).get("shader")
+    
+    if shader_from_config:
+        # Validate shader file exists
+        shader_path = Path(__file__).parent / "shaders" / shader_from_config
+        if shader_path.exists():
+            logging.info(f"🎨 Using shader from config: {shader_from_config}")
+            return shader_from_config
+        else:
+            logging.warning(f"⚠️  Shader from config not found: {shader_path}")
+            logging.warning(f"⚠️  Falling back to default: {default_shader}")
+    else:
+        logging.info(f"📄 No shader specified in config, using default: {default_shader}")
+    
+    return default_shader
+
 def main():
     # Move global declaration to the top of the function
     global PREVIEW_MODE, active_executors, active_multiprocessing_processes, SEGMENT_DURATION
@@ -1219,7 +1259,7 @@ def main():
     parser.add_argument('--preview', action='store_true', help='Create and preview first segment only')
     parser.add_argument('--output', help='Output video file path (default: project_name.mp4)')
     parser.add_argument('--segment-duration', type=float, help=f'Duration of each segment in seconds (default: {SEGMENT_DURATION})')
-    parser.add_argument('--shader', default='fragment.glsl', help='Fragment shader file name (default: fragment.glsl)')
+    parser.add_argument('--shader', help='Fragment shader file name (overrides config.json)')
     
     args = parser.parse_args()
     
@@ -1232,8 +1272,19 @@ def main():
     else:
         logging.info(f"Using default segment duration: {SEGMENT_DURATION}s")
     
+    # Determine which shader to use - priority: command line > config.json > default
+    script_dir = Path(__file__).parent
+    
+    if args.shader:
+        # Command line override
+        selected_shader = args.shader
+        logging.info(f"🎨 Using command line shader: {selected_shader}")
+    else:
+        # Get from config or use default
+        selected_shader = get_shader_from_config(args.project_name, script_dir)
+    
     # Validate shader file exists
-    shader_path = Path(__file__).parent / "shaders" / args.shader
+    shader_path = Path(__file__).parent / "shaders" / selected_shader
     if not shader_path.exists():
         logging.error(f"Shader file not found: {shader_path}")
         logging.error(f"Available shaders in /shaders/ directory:")
@@ -1243,7 +1294,7 @@ def main():
                 logging.error(f"  - {shader_file.name}")
         sys.exit(1)
     
-    logging.info(f"Using fragment shader: {args.shader}")
+    logging.info(f"✅ Using fragment shader: {selected_shader}")
     
     try:
         # Load project data including subtitles
@@ -1272,8 +1323,6 @@ def main():
                 logging.info(f"Preview mode: Using first segment duration of {preview_duration:.2f}s")
         
             # Set output file paths
-            script_dir = Path(__file__).parent
-            
             if args.output:
                 final_output = args.output
             else:
@@ -1321,7 +1370,7 @@ def main():
                 
                 tracker = ProgressTracker(progress_bar)
                 
-                result = process_image_segment_with_progress(segment, subtitles, tracker, args.shader)
+                result = process_image_segment_with_progress(segment, subtitles, tracker, selected_shader)
                 progress_bar.close()
                 
                 if result['success']:
@@ -1353,7 +1402,7 @@ def main():
                     logging.info(f"Starting {MAX_WORKERS} worker processes...")
                     
                     future_to_segment = {
-                        executor.submit(process_segment_wrapper, (segment, subtitles, progress_queue, args.shader)): segment 
+                        executor.submit(process_segment_wrapper, (segment, subtitles, progress_queue, selected_shader)): segment 
                         for segment in segments
                     }
                     

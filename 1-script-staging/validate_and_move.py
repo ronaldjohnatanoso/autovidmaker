@@ -148,7 +148,8 @@ def write_config_file(target_dir, estimated_millis):
             "image_gen": {},
             "upscale_img": {},
             "img_stitch": {
-                "background_music_file": "horror_wind.mp3" 
+                "background_music_file": "horror_wind.mp3",
+                "shader" : "analog.glsl",
             },
             "vid_edit": {}
         }

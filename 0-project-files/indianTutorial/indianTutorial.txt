@@ -1,5 +1,5 @@
 duration_estimation_milliseconds: 300000
-voice_instruction: read in an indian accent with disappoinment.
+voice_instruction: read in an angry indian accent
 Speaker 1:
 
 <p1 image_prompt="whiteboard filled with red scribbles of sorting algorithms, one bubble sort circled with '??'">So… you failed the technical interview. Again. Okay, first of all — who the hell uses Bubble Sort in 2025? Be honest. Was that a joke?</p1>

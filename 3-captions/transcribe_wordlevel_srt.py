@@ -19,13 +19,55 @@ def clean_text_for_alignment(text):
     cleaned = re.sub(r'\s+', ' ', text.lower().strip())
     return cleaned
 
+def extract_dialogue_only(ground_truth_text):
+    """
+    Extract only the dialogue content, removing voice directions and speaker labels.
+    
+    Args:
+        ground_truth_text: Raw script text with directions and speaker labels
+    
+    Returns:
+        Clean dialogue text only
+    """
+    lines = ground_truth_text.strip().split('\n')
+    dialogue_lines = []
+    
+    for line in lines:
+        line = line.strip()
+        
+        # Skip empty lines
+        if not line:
+            continue
+            
+        # Skip voice direction lines (lines that don't start with "Speaker")
+        if line.startswith(('read with', 'read in', 'Calm,', 'Like a', 'Smiling,')):
+            continue
+            
+        # Process speaker lines
+        if line.startswith('Speaker '):
+            # Extract everything after "Speaker X:" 
+            if ':' in line:
+                dialogue_part = line.split(':', 1)[1].strip()
+                if dialogue_part:  # Only add if there's actual dialogue
+                    dialogue_lines.append(dialogue_part)
+        else:
+            # Regular dialogue line (continuation from previous speaker)
+            dialogue_lines.append(line)
+    
+    # Join all dialogue with spaces
+    return ' '.join(dialogue_lines)
+
 def align_ground_truth_with_whisper(ground_truth_text, whisper_words):
     """
     Conservative alignment that preserves original ground truth text structure.
     Only replaces words that WhisperX clearly got wrong.
     """
+    # Extract only dialogue content
+    dialogue_text = extract_dialogue_only(ground_truth_text)
+    print(f"[INFO] Extracted dialogue: {dialogue_text[:100]}...")
+    
     # Split ground truth into words while preserving original text
-    gt_words_original = ground_truth_text.split()
+    gt_words_original = dialogue_text.split()
     
     # Create cleaned versions for comparison only
     gt_words_clean = [clean_text_for_alignment(word) for word in gt_words_original]
