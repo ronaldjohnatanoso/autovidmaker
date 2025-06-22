@@ -1,0 +1,56 @@
+duration_estimation_milliseconds: 160000
+voice_instruction: read in a deep voice of an old man
+title: john chapter 10 - the good shepherd
+Speaker 1:
+
+<p1 image_prompt="Old man sitting by stone wall, shepherd's staff beside him, sunset over hills">Come close, friend. Got somethin' to tell ya 'bout shepherds. Been one myself, back in the day. Jesus knew what He was talkin' about in John ten.</p1>
+
+<p2 image_prompt="Jesus standing among sheep, gentle smile, staff in hand">He said, "I am the Good Shepherd." Not just any shepherd — the Good one.</p2>
+
+<p3 image_prompt="Sheep pen with wooden gate, shepherd opening it at dawn">Real shepherds don't climb over walls like thieves. They come through the gate, proper-like.</p3>
+
+<p4 image_prompt="Sheep lifting heads, recognizing shepherd's voice, ears perked">And the sheep? They know their shepherd's voice. Not just the words — the heart behind 'em.</p4>
+
+<p5 image_prompt="Shepherd calling sheep by name, each one responding differently">He calls each one by name. Daisy, Woolly, Stubborn Pete. Every sheep matters.</p5>
+
+<p6 image_prompt="Flock following shepherd down winding path, trust in their steps">When he leads, they follow. Not 'cause they have to — 'cause they trust where he's goin'.</p6>
+
+<p7 image_prompt="Stranger approaching sheep pen, sheep backing away fearfully">But a stranger? They scatter. Sheep ain't stupid — they know danger.</p7>
+
+<p8 image_prompt="Jesus speaking to confused disciples, patience in His eyes">Folks didn't understand His story. So Jesus made it plain.</p8>
+
+<p9 image_prompt="Jesus as shepherd standing at gate, arms wide, welcoming">He said, "I am the gate for the sheep. Whoever enters through Me will be saved."</p9>
+
+<p10 image_prompt="Wolves circling sheep pen at night, yellow eyes glowing">Before Him came thieves and robbers — wolves in sheep's clothing.</p10>
+
+<p11 image_prompt="Hired hand running away as wolf approaches, abandoning flock">Hired hands run when trouble comes. It ain't their sheep — why should they care?</p11>
+
+<p12 image_prompt="Good shepherd standing firm against wolf, protecting his flock">But the Good Shepherd? He stays. Fights. Dies if he has to.</p12>
+
+<p13 image_prompt="Shepherd carrying wounded lamb, blood on his hands, love in his eyes">I've seen it. Shepherds torn up by wild beasts, protectin' what was theirs.</p13>
+
+<p14 image_prompt="Jesus looking up toward heaven, knowing His purpose">Jesus said, "I lay down My life for the sheep." Knew what was comin'.</p14>
+
+<p15 image_prompt="Cross on hill, Jesus sacrificing himself, sheep gathered below">Nobody took His life — He gave it. For you. For me. For every lost lamb.</p15>
+
+<p16 image_prompt="Empty tomb, light streaming out, victory over death">But death couldn't hold the Good Shepherd. He took His life back up.</p16>
+
+<p17 image_prompt="Different flocks of sheep from various lands converging">He's got other sheep too — not just our flock. All colors, all kinds.</p17>
+
+<p18 image_prompt="One unified flock under one shepherd, diverse but united">One day, one flock, one Shepherd. That's the plan.</p18>
+
+<p19 image_prompt="Lost sheep wandering in brambles, cut and bleeding">Maybe you're that lost sheep tonight. Wanderin' in the thorns.</p19>
+
+<p20 image_prompt="Shepherd searching with lantern, calling out in the darkness">He's out there lookin' for you. Callin' your name.</p20>
+
+<p21 image_prompt="Shepherd finding lost sheep, gentle hands lifting it up">Won't stop 'til He finds you. Won't leave you behind.</p21>
+
+<p22 image_prompt="Sheep resting safely in shepherd's arms, finally at peace">That's what Good Shepherds do — they bring the lost ones home.</p22>
+
+<p23 image_prompt="Peaceful pasture, sheep grazing safely, shepherd watching over">His voice cuts through all the noise. All the lies. All the fear.</p23>
+
+<p24 image_prompt="Jesus reaching out His hand, calling to the viewer">Listen close — can you hear Him callin'?</p24>
+
+<p25 image_prompt="Gate standing open, warm light beyond, invitation to enter">The gate's still open, friend. The Good Shepherd's waitin'.</p25>
+
+<p26 image_prompt="Shepherd and sheep walking toward home, golden sunset ahead">Time to come home to the fold.</p26>

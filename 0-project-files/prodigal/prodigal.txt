@@ -1,0 +1,60 @@
+duration_estimation_milliseconds: 165000
+voice_instruction: read in a deep voice of an old man
+title: luke chapter 15 - the prodigal son
+Speaker 1:
+
+<p1 image_prompt="Old man on front porch, rocking chair, worn Bible open, evening light">Settle in, friend. Got a story from Luke fifteen — the prodigal son. Been chewin' on this one for decades.</p1>
+
+<p2 image_prompt="Jesus sitting by fire, disciples gathered close, night sky">Jesus told it to folks who thought they had God figured out. Still speaks today.</p2>
+
+<p3 image_prompt="Young man counting coins, greedy look, father watching sadly">Boy wanted his inheritance early. Basically told his daddy, "I wish you were dead."</p3>
+
+<p4 image_prompt="Father's weathered hands giving bag of coins to son">But that father? He gave it anyway. Love don't hold tight when it needs to let go.</p4>
+
+<p5 image_prompt="Young man walking away from home, suitcase in hand, not looking back">Boy took everything and ran. Thought freedom meant distance from home.</p5>
+
+<p6 image_prompt="Wild party scene, people drinking, money scattered, loud music">He lived it up — wine, women, whatever his heart desired. Money flows like water when you ain't earned it.</p6>
+
+<p7 image_prompt="Empty wallet, broken bottles, morning after mess">But pockets got empty. Friends disappeared. Funny how that works.</p7>
+
+<p8 image_prompt="Young man feeding pigs, mud on his clothes, looking desperate">Ended up sloppin' pigs. Jewish boy, unclean animals. That's shame piled on shame.</p8>
+
+<p9 image_prompt="Hungry man looking at pig slop, stomach growling">Got so hungry, pig food looked good. Pride tastes bitter when your belly's empty.</p9>
+
+<p10 image_prompt="Young man sitting alone under tree, head in hands, realizing">That's when it hit him. "My father's servants eat better than this."</p10>
+
+<p11 image_prompt="Man walking dusty road toward home, worn shoes, determined face">So he started home. Practiced his speech every step. "Father, I've sinned."</p11>
+
+<p12 image_prompt="Old father scanning horizon daily, hand shielding eyes">But daddy was watchin'. Every day. Waitin'.</p12>
+
+<p13 image_prompt="Father's face lighting up, joy breaking across weathered features">Soon as he saw that boy... oh, the joy! Ran like a young man.</p13>
+
+<p14 image_prompt="Father running toward son, robes flying, arms wide open">Didn't walk with dignity. Ran! Threw his arms around that dirty, smelly boy.</p14>
+
+<p15 image_prompt="Father and son embracing, both crying, forgiveness flowing">Boy started his speech — daddy cut him off with kisses.</p15>
+
+<p16 image_prompt="Father calling servants, excitement in his voice, pointing to son">Called for the best robe. Ring for his finger. This is my son!</p16>
+
+<p17 image_prompt="Servants preparing feast, tables filling with food, music starting">Killed the fattened calf. Threw a party that shook the rafters.</p17>
+
+<p18 image_prompt="Older brother in field, hearing music, confused and angry">But the older brother? He heard the music from the field. Got mad.</p18>
+
+<p19 image_prompt="Older brother confronting father, pointing angrily toward house">Said, "I've been faithful all these years. You never threw me a party!"</p19>
+
+<p20 image_prompt="Father reaching out to older son, love in his eyes">Daddy said, "Son, everything I have is yours. But your brother was dead... and now he's alive."</p20>
+
+<p21 image_prompt="Two sons and father together, reconciliation, family complete">See, there's two sons in all of us. One runs wild, one stays bitter.</p21>
+
+<p22 image_prompt="Jesus looking directly at viewer, compassionate eyes">But the Father? He loves 'em both. Runs to the rebel, reaches for the righteous.</p22>
+
+<p23 image_prompt="Man kneeling in prayer, looking up with tears">Maybe you're the prodigal — far from home, eatin' with pigs.</p23>
+
+<p24 image_prompt="Father's arms open wide, light streaming behind Him">He's watchin' the road. Waitin' to run.</p24>
+
+<p25 image_prompt="Prideful man standing alone, arms crossed, missing the party">Or maybe you're the older brother — keepin' score, missin' the joy.</p25>
+
+<p26 image_prompt="Father's hand extended, invitation to join the celebration">Either way, Daddy's callin' you home. The party's already started.</p26>
+
+<p27 image_prompt="Family feast table, empty chair waiting, warm light">There's a place at the table. Robe with your name on it.</p27>
+
+<p28 image_prompt="Starry sky over a home with warm lights, door wide open">Come on home, child. Your Father's been waitin'.</p28>

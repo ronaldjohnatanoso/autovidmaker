@@ -1,0 +1,43 @@
+duration_estimation_milliseconds: 300000
+voice_instruction: read in a deep voice of an old man 
+Speaker 1:
+
+<p1 image_prompt="Jesus extending hand, golden light, person kneeling in prayer">Look at you, child of the Most High! You are fearfully and wonderfully made! The same God who spoke galaxies into existence breathed life into your lungs. You carry the DNA of divinity, blessed soul!</p1>
+
+<p2 image_prompt="Jesus walking on water, storm calming, rainbow after rain">When storms rage in your life, remember - you serve the God who commands the winds and waves! Every trial is training, every test is testimony! Your breakthrough is brewing, hallelujah!</p2>
+
+<p3 image_prompt="Jesus at the cross, crown of thorns, resurrection morning glory">The King of Kings died so you could live abundantly! His sacrifice wasn't just for forgiveness - it was for your freedom, your favor, your future! You're not just saved, you're chosen!</p3>
+
+<p4 image_prompt="Jesus multiplying bread and fish, abundance flowing, empty baskets filled">From five loaves and two fish, He fed thousands! Your little is much when God is in it! He's about to multiply your gifts, your resources, your impact! Get ready for overflow!</p4>
+
+<p5 image_prompt="Jesus praying on mountain, disciples watching, holy light surrounding">Prayer changes everything! When you pray, heaven moves! Angels are dispatched! Miracles are released! You're not just talking to yourself - you're talking to the Creator of the universe!</p5>
+
+<p6 image_prompt="Jesus healing the blind, sight restored, celebration and joy">He opens blind eyes! He makes the lame walk! He turns water into wine! The same Jesus who performed miracles 2000 years ago is still working today! Your miracle is on the way!</p6>
+
+<p7 image_prompt="Jesus with children, blessing them, pure love and joy">You are precious in His sight! More valuable than gold! The God of the universe knows your name, counts your tears, and has plans to prosper you! You matter to the King!</p7>
+
+<p8 image_prompt="Jesus ascending to heaven, clouds of glory, disciples watching in awe">He conquered death, hell, and the grave! Because He lives, you can face tomorrow! Your future is secure in Him! Death has no sting, grave has no victory!</p8>
+
+<p9 image_prompt="Jesus knocking at heart's door, warm light, invitation extended">He's knocking at your heart's door! Not forcing His way in, but lovingly inviting! Open up to the One who loves you unconditionally! Let Him transform your life!</p9>
+
+<p10 image_prompt="Jesus as shepherd, carrying lost sheep, green pastures, still waters">You're not lost anymore! The Good Shepherd found you! He guides you, protects you, provides for you! In His presence is fullness of joy!</p10>
+
+<p11 image_prompt="Jesus washing disciples' feet, servant leadership, love in action">The King served! He showed us true greatness comes through serving others! Your calling is to love like He loved, serve like He served! You're destined for greatness!</p11>
+
+<p12 image_prompt="Jesus in garden of Gethsemane, surrendering to God's will, strength in weakness">Even in His darkest hour, He trusted the Father's plan! Your pain has purpose! Your struggle has significance! God's using it all for your good!</p12>
+
+<p13 image_prompt="Jesus risen from tomb, stone rolled away, victory over death">IT IS FINISHED! The victory is won! Sin defeated! Death conquered! You're more than a conqueror through Christ! Walk in that victory!</p13>
+
+<p14 image_prompt="Jesus sending out disciples, Holy Spirit descending, power from on high">He's equipped you with power from on high! You're not going out empty-handed! The same Spirit that raised Christ from the dead lives in you! Go change the world!</p14>
+
+<p15 image_prompt="Jesus returning in clouds, trumpet sound, believers being caught up">He's coming back! This world is not your home! Keep your eyes on the prize! Your citizenship is in heaven! What a day that will be!</p15>
+
+<p16 image_prompt="Jesus at God's right hand, interceding, holy throne room">Right now, at this very moment, Jesus is interceding for you! Praying for you! Fighting for you! You have an advocate with the Father!</p16>
+
+<p17 image_prompt="Jesus embracing prodigal son, father's love, celebration and restoration">No matter how far you've wandered, His arms are open wide! The Father is running toward you! You're not an orphan - you're a child of the King!</p17>
+
+<p18 image_prompt="Jesus calming storm, disciples amazed, peace in chaos">He speaks peace to your storm! What looks impossible to you is possible with God! Mountains move when faith speaks! Your situation is about to change!</p18>
+
+<p19 image_prompt="Jesus with crown of glory, all nations bowing, every knee bending">One day every knee will bow! Every tongue will confess! He is Lord of lords and King of kings! And you get to reign with Him! What a privilege!</p19>
+
+<p20 image_prompt="Jesus smiling with approval, well done good and faithful servant, eternal reward">Live for His approval! One day you'll hear those beautiful words: 'Well done, good and faithful servant!' Your labor in the Lord is not in vain! Keep pressing, blessed child of God!</p20>

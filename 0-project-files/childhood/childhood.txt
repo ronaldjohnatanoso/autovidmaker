@@ -1,8 +1,0 @@
-duration_estimation_milliseconds: 180000
-voice_instruction: Read this slowly, gently. Like you’re remembering something that still matters.
-
-Speaker 1:
-
-<p1 image_prompt="old playground at sunset, slightly overgrown with grass, empty swings moving gently in the wind">There’s a version of me still sitting at that playground. Bare feet on warm gravel. Waiting for someone who never showed up. I think about him sometimes. I think he still believes in everything.</p1>
-
-<p2 image_prompt="mirror with faint reflections of different ages layered behind current reflection">We wear every age we’ve ever been. The child. The teenager. The version who thought they had it all figured out. They don’t vanish. They whisper. Sometimes, they scream.</p2>

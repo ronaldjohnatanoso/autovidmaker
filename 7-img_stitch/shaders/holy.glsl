@@ -106,6 +106,37 @@ vec3 effect_divine_brightness(vec3 input_color, float time) {
     return enhanced;
 }
 
+/**
+ * KEN BURNS EFFECT - Slow zoom and pan motion
+ */
+vec2 effect_ken_burns(vec2 input_uv, float time) {
+    // Ken Burns parameters
+    float zoom_speed = 0.1;        // How fast we zoom
+    float pan_speed = 0.05;        // How fast we pan
+    float max_zoom = 1.3;          // Maximum zoom level
+    float min_zoom = 1.0;          // Minimum zoom level
+    
+    // Create slow zoom in and out cycle
+    float zoom_cycle = sin(time * zoom_speed) * 0.5 + 0.5; // 0 to 1
+    float zoom_factor = mix(min_zoom, max_zoom, zoom_cycle);
+    
+    // Create slow panning motion
+    vec2 pan_offset = vec2(
+        sin(time * pan_speed) * 0.05,        // Horizontal pan
+        cos(time * pan_speed * 0.7) * 0.03   // Vertical pan (different speed)
+    );
+    
+    // Apply zoom (scale from center)
+    vec2 centered_uv = input_uv - 0.5;
+    centered_uv /= zoom_factor;
+    centered_uv += 0.5;
+    
+    // Apply pan
+    centered_uv += pan_offset;
+    
+    return centered_uv;
+}
+
 // ============================================================================
 // SUBTITLE AND MAIN FUNCTION
 // ============================================================================
@@ -126,33 +157,47 @@ vec3 add_subtitle_overlay(vec3 base_color, vec2 uv_coords) {
         // Use the original luminance to preserve text details and stroke
         float luminance = dot(subtitle_sample.rgb, vec3(0.299, 0.587, 0.114));
         
-        // SHINING EFFECT
+        // SHINING EFFECT - Enhanced sun-like shine
         // Create a moving shine wave across the text
-        float shine_speed = 2.0;
-        float shine_width = 0.3;
-        float shine_position = mod(u_time * shine_speed, 2.0) - 0.5; // -0.5 to 1.5 range
+        float shine_speed = 1.5; // Slightly slower for more dramatic effect
+        float shine_width = 0.4; // Wider shine beam
+        float shine_position = mod(u_time * shine_speed, 2.5) - 0.75; // Wider sweep range
         
         // Calculate distance from shine position
         float shine_distance = abs(subtitle_uv.x - shine_position);
         float shine_intensity = 1.0 - smoothstep(0.0, shine_width, shine_distance);
+        shine_intensity = pow(shine_intensity, 0.5); // Make shine falloff more gradual
         
-        // Add shine glow effect
-        float glow_intensity = exp(-shine_distance * 8.0) * 0.5;
+        // Add multiple layers of glow for sun-like effect
+        float glow_intensity = exp(-shine_distance * 6.0) * 0.8; // Stronger primary glow
+        float outer_glow = exp(-shine_distance * 3.0) * 0.4; // Wider secondary glow
+        float far_glow = exp(-shine_distance * 1.5) * 0.2; // Even wider tertiary glow
+        
+        // Combine all glow layers
         shine_intensity = max(shine_intensity, glow_intensity);
+        shine_intensity = max(shine_intensity, outer_glow);
+        shine_intensity = max(shine_intensity, far_glow);
         
-        // Enhance the golden color with shine
-        vec3 shine_color = vec3(1.0, 1.0, 0.8); // Bright white-gold shine
-        vec3 enhanced_golden = mix(golden_color, shine_color, shine_intensity * 0.6);
+        // Make shine more intense when it's directly over text
+        shine_intensity *= (1.0 + luminance * 0.5); // Brighter on actual text areas
         
-        // Add extra brightness pulse for divine effect
-        float divine_pulse = sin(u_time * 3.0) * 0.1 + 1.0;
+        // Enhance the golden color with much brighter shine
+        vec3 shine_color = vec3(1.5, 1.3, 0.9); // Brighter, more golden shine
+        vec3 enhanced_golden = mix(golden_color, shine_color, shine_intensity * 0.9); // Stronger mix
+        
+        // Add extra brightness pulse for divine effect (more intense)
+        float divine_pulse = sin(u_time * 3.0) * 0.2 + 1.2; // Stronger pulse
         enhanced_golden *= divine_pulse;
+        
+        // Add sun-like bloom effect
+        float bloom_effect = shine_intensity * 0.3;
+        enhanced_golden += vec3(bloom_effect * 1.2, bloom_effect * 0.9, bloom_effect * 0.6);
         
         // Apply the enhanced color
         vec3 golden_text = enhanced_golden * luminance;
         
         // Enhance the alpha blending for stronger shine effect
-        float enhanced_alpha = subtitle_sample.a * (1.0 + shine_intensity * 0.3);
+        float enhanced_alpha = subtitle_sample.a * (1.0 + shine_intensity * 0.6); // Stronger alpha boost
         enhanced_alpha = clamp(enhanced_alpha, 0.0, 1.0);
         
         return mix(base_color, golden_text, enhanced_alpha);
@@ -166,6 +211,9 @@ void main() {
     
     // Apply gentle holy transformations
     working_uv = effect_gentle_float(working_uv, u_time);
+    
+    // Apply Ken Burns effect
+    working_uv = effect_ken_burns(working_uv, u_time);
     
     // Sample the texture
     vec3 working_color = texture(tex, working_uv).rgb;

@@ -1,0 +1,28 @@
+1
+00:00:00,031 --> 00:00:22,998
+Banana, telescope, refrigerator, whistle, mountain, cheese, gravel, notebook, 17, cucumber, plastic, fantastic, metal, butter, violin, purple, elephant, shoelace, tornado, mathematics, pencil, ocean, dinosaur, keyboard, lightning, sandwich, bicycle, clock radio, frequency.
+
+2
+00:00:22,998 --> 00:00:45,829
+Marshmallow, typewriter, volcano, bicycle, internet, dragon, toothbrush, calendar, explosion, rainbow, monkey wrench, doorknob, satellite, spaghetti, helicopter, submarine, guitar, magazine, butterfly, concrete, telephone, newspaper, airplane, scissors, umbrella, grasshopper, mythology.
+
+3
+00:00:45,829 --> 00:01:14,111
+football, microscope, sandwich, tornado, elephant, refrigerator, keyboard, 17, fantastic, metal, butter, violin, shoelace, pickle, banana, telescope, whistle, mountain, cheese, gravel, notebook, dragon, toothbrush, calendar, explosion, rainbow, monkey wrench, doorknob, satellite, marshmallow, typewriter, volcano, bicycle, internet,
+
+4
+00:01:14,111 --> 00:01:34,581
+Concrete, telephone, newspaper, airplane, scissors, umbrella, grasshopper, mythology, spaghetti, helicopter, submarine, guitar, magazine, butterfly, mathematics, purple toothbrush, volcano, dinosaur, plastic, football, microscope, sandwich, tornado, elephant,
+
+5
+00:01:34,581 --> 00:01:57,683
+Refrigerator, keyboard, 17, fantastic, metal, butter, violin, shoelace, pickle, banana, telescope, whistle, mountain, cheese, gravel, notebook, rainbow, monkey wrench, doorknob, satellite, marshmallow, typewriter, volcano, bicycle, internet, dragon, toothbrush, calendar, explosion.
+
+6
+00:01:57,683 --> 00:02:18,895
+Butterfly, concrete, telephone, newspaper, airplane, scissors, umbrella, grasshopper, mythology, spaghetti, helicopter, submarine, guitar, magazine, 17, mathematics, purple toothbrush, volcano, dinosaur, plastic, football, microscope, sandwich, tornado, elephant, refrigerator, keyboard.
+
+7
+00:02:18,895 --> 00:02:48,275
+notebook, cucumber, fantastic, metal, butter, violin, shoelace, pickle, banana, telescope, whistle, mountain, cheese, gravel, calendar, explosion, rainbow, monkey wrench, doorknob, satellite, marshmallow, typewriter, volcano, bicycle, internet, dragon, toothbrush, guitar, magazine, butterfly, concrete, telephone, newspaper, airplane, scissors, umbrella, grasshopper, mythology,
+

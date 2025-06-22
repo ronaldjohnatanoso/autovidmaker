@@ -71,7 +71,7 @@ function delay(ms) {
 
   // Launch Chrome headless in background, headless
   console.log("🚀 Launching Chrome...");
-  const chromeProcess = spawn("bash", [launchChromeScript], {
+  const chromeProcess = spawn("bash", [launchChromeScript],  {
     cwd: __dirname, // 🔧 Fix: make sure it runs from this folder
     detached: true,
     stdio: "ignore",

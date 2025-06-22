@@ -45,6 +45,7 @@ VRAM_THRESHOLD = 0.95
 SEGMENT_DURATION = 20
 MAX_WORKERS =  8  # Max number of parallel workers
 SUBTITLE_FONT_SIZE = 64 + 32
+VERTICAL_CLIP_DURATION = 180  # Duration for vertical clip in seconds (3 minutes)
 
 # Optimized encoding settings for size/speed balance
 ENCODING_PRESET = 'p4'      # Balanced preset (p1=fastest, p7=slowest)
@@ -55,7 +56,7 @@ ENCODING_BUFSIZE = '8M'     # Buffer size
 
 # Audio settings
 BACKGROUND_MUSIC_FILE = "hatdog.mp3"  # Change this to your BGM filename
-BGM_VOLUME = 1                    # Background music volume (0.0 to 1.0)
+BGM_VOLUME = 0.8                    # Background music volume (0.0 to 1.0)
 NARRATION_VOLUME = 1.5                # Narration audio volume (0.0 to 1.0)
 
 # Set to True to only process and preview first 10 seconds
@@ -1101,8 +1102,8 @@ def find_audio_files(project_name, script_dir):
     
     return narration_audio, bgm_audio
 
-def create_vertical_version(input_video, output_video):
-    """Create 1080x1080 square version by center-cropping the landscape video"""
+def create_vertical_version(input_video, output_video, total_duration):
+    """Create 1080x1080 square version by center-cropping the landscape video, and optionally create a clipped version"""
     try:
         # Original dimensions
         source_width = 1920
@@ -1144,7 +1145,7 @@ def create_vertical_version(input_video, output_video):
         ]
         
         logging.info(f"Creating square version: {output_video}")
-        logging.info(f"Duration: {target_width}x{target_height} (SQUARE)")
+        logging.info(f"Dimensions: {target_width}x{target_height} (SQUARE)")
         logging.info(f"Crop: {crop_width}x{crop_height} from position ({crop_x},{crop_y})")
         logging.info(f"Cropping {source_width - crop_width}px from sides ({crop_x}px from each side)")
         
@@ -1200,6 +1201,44 @@ def create_vertical_version(input_video, output_video):
             
         else:
             raise Exception("Square output file was not created")
+        
+        # Create clipped version if video is longer than VERTICAL_CLIP_DURATION
+        if total_duration > VERTICAL_CLIP_DURATION:
+            clipped_output = output_video.replace('.mp4', f'_clip{VERTICAL_CLIP_DURATION}s.mp4')
+            
+            logging.info(f"📹 Creating clipped version (first {VERTICAL_CLIP_DURATION}s): {clipped_output}")
+            
+            # Use copy mode to avoid re-encoding - much faster
+            clip_cmd = [
+                'ffmpeg', '-y',
+                '-i', output_video,          # Input is the already created square video
+                '-t', str(VERTICAL_CLIP_DURATION),  # Duration limit
+                '-c', 'copy',                # Copy without re-encoding
+                '-avoid_negative_ts', 'make_zero',  # Handle timestamp issues
+                clipped_output
+            ]
+            
+            try:
+                result = subprocess.run(clip_cmd, check=True, capture_output=True, text=True)
+                logging.info(f"✅ Clipped version created successfully")
+                
+                # Show file size comparison
+                if os.path.exists(clipped_output):
+                    clipped_size = os.path.getsize(clipped_output) / (1024 * 1024)  # MB
+                    time_ratio = (VERTICAL_CLIP_DURATION / total_duration) * 100
+                    size_ratio = (clipped_size / square_size) * 100
+                    
+                    logging.info(f"📊 Clipped version stats:")
+                    logging.info(f"  Duration: {VERTICAL_CLIP_DURATION}s ({time_ratio:.1f}% of original)")
+                    logging.info(f"  File size: {clipped_size:.2f} MB ({size_ratio:.1f}% of square version)")
+                    logging.info(f"  Saved: {square_size - clipped_size:.2f} MB")
+                
+            except subprocess.CalledProcessError as e:
+                logging.warning(f"Failed to create clipped version: {e}")
+                if e.stderr:
+                    logging.warning(f"FFmpeg stderr: {e.stderr}")
+        else:
+            logging.info(f"📹 Video duration ({total_duration:.1f}s) is shorter than clip duration ({VERTICAL_CLIP_DURATION}s), skipping clip creation")
             
     except subprocess.CalledProcessError as e:
         logging.error(f"❌ Failed to create square version: {e}")
@@ -1538,10 +1577,15 @@ def main():
                 # Create vertical version
                 logging.info("📱 Creating vertical (9:16) version...")
                 try:
-                    create_vertical_version(final_output, vertical_output)
+                    create_vertical_version(final_output, vertical_output, total_duration)
                     logging.info(f"✅ Both versions created successfully!")
                     logging.info(f"🖥️  Landscape (16:9): {final_output}")
                     logging.info(f"📱 Vertical (9:16): {vertical_output}")
+                    
+                    # Check if clipped version was created
+                    clipped_output = vertical_output.replace('.mp4', f'_clip{VERTICAL_CLIP_DURATION}s.mp4')
+                    if os.path.exists(clipped_output):
+                        logging.info(f"✂️  Vertical clip ({VERTICAL_CLIP_DURATION}s): {clipped_output}")
                     
                 except Exception as e:
                     logging.error(f"Failed to create vertical version: {e}")

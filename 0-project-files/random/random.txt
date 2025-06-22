@@ -1,0 +1,43 @@
+duration_estimation_milliseconds: 300000
+voice_instruction: read with an angry hood accent
+Speaker 1:
+
+<p1 image_prompt="shadowy figure injecting microchips into vaccines while citizens panic in background">Banana telescope refrigerator whistle mountain cheese gravel notebook seventeen cucumber plastic fantastic meadow butter violin.</p1>
+
+<p2 image_prompt="government agents watching through smart TVs as families eat dinner, red alert symbols flashing">Purple elephant shoelace tornado mathematics pencil ocean dinosaur keyboard lightning sandwich bicycle clock radio frequency.</p2>
+
+<p3 image_prompt="chemtrails forming geometric patterns over city while people look up in terror">Marshmallow typewriter volcano bicycle internet dragon toothbrush calendar explosion rainbow monkey wrench doorknob satellite.</p3>
+
+<p4 image_prompt="flat earth map with NASA logos crossed out, crowds of believers holding signs">Spaghetti helicopter submarine guitar magazine butterfly concrete telephone newspaper airplane scissors umbrella grasshopper mythology.</p4>
+
+<p5 image_prompt="illuminati pyramid eye symbol projected onto buildings while crowds flee in panic">Football microscope sandwich tornado elephant refrigerator keyboard seventeen mathematics purple toothbrush volcano dinosaur plastic.</p5>
+
+<p6 image_prompt="5G towers emitting ominous green rays while birds fall from sky, people covering heads">Pickle banana telescope whistle mountain cheese gravel notebook cucumber fantastic meadow butter violin shoelace.</p6>
+
+<p7 image_prompt="alien spaceship hovering over Pentagon while military scrambles, civilians recording on phones">Dragon toothbrush calendar explosion rainbow monkey wrench doorknob satellite marshmallow typewriter volcano bicycle internet.</p7>
+
+<p8 image_prompt="mind control waves emanating from cell phone towers, zombified people walking in unison">Concrete telephone newspaper airplane scissors umbrella grasshopper mythology spaghetti helicopter submarine guitar magazine butterfly.</p8>
+
+<p9 image_prompt="secret bunker with world leaders planning depopulation while masses protest outside">Mathematics purple toothbrush volcano dinosaur plastic football microscope sandwich tornado elephant refrigerator keyboard seventeen.</p9>
+
+<p10 image_prompt="weather manipulation machine creating hurricanes while scientists panic at control panels">Fantastic meadow butter violin shoelace pickle banana telescope whistle mountain cheese gravel notebook cucumber.</p10>
+
+<p11 image_prompt="lizard people shapeshifting in government building while security cameras glitch">Rainbow monkey wrench doorknob satellite marshmallow typewriter volcano bicycle internet dragon toothbrush calendar explosion.</p11>
+
+<p12 image_prompt="HAARP facility shooting beams into atmosphere while nearby residents evacuate in terror">Butterfly concrete telephone newspaper airplane scissors umbrella grasshopper mythology spaghetti helicopter submarine guitar magazine.</p12>
+
+<p13 image_prompt="fake moon landing studio being exposed while astronauts flee from angry crowd">Seventeen mathematics purple toothbrush volcano dinosaur plastic football microscope sandwich tornado elephant refrigerator keyboard.</p13>
+
+<p14 image_prompt="underground tunnels connecting world capitals while surface dwellers panic">Cucumber fantastic meadow butter violin shoelace pickle banana telescope whistle mountain cheese gravel notebook.</p14>
+
+<p15 image_prompt="AI robots replacing humans in government positions while citizens protest in streets">Explosion rainbow monkey wrench doorknob satellite marshmallow typewriter volcano bicycle internet dragon toothbrush calendar.</p15>
+
+<p16 image_prompt="time travel portal opening in laboratory while scientists run for emergency exits">Magazine butterfly concrete telephone newspaper airplane scissors umbrella grasshopper mythology spaghetti helicopter submarine guitar.</p16>
+
+<p17 image_prompt="population control chemicals being released into water supply while families panic">Keyboard seventeen mathematics purple toothbrush volcano dinosaur plastic football microscope sandwich tornado elephant refrigerator.</p17>
+
+<p18 image_prompt="holographic sky projection hiding real sky while people point and scream">Notebook cucumber fantastic meadow butter violin shoelace pickle banana telescope whistle mountain cheese gravel.</p18>
+
+<p19 image_prompt="dimensional portal releasing otherworldly beings while military cordons off area">Calendar explosion rainbow monkey wrench doorknob satellite marshmallow typewriter volcano bicycle internet dragon toothbrush.</p19>
+
+<p20 image_prompt="global reset button being pressed by shadowy figures while world burns in background">Guitar magazine butterfly concrete telephone newspaper airplane scissors umbrella grasshopper mythology spaghetti helicopter submarine.</p20>

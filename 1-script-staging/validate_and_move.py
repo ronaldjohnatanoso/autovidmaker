@@ -31,17 +31,27 @@ def check_voice_instruction(lines):
         return False, "Voice instruction cannot be empty"
     return True, None
 
+def check_title_line(lines):
+    if len(lines) < 3:
+        return False, "Missing title after voice instruction"
+    if not lines[2].startswith("title:"):
+        return False, "Third line must start with 'title:'"
+    title = lines[2].split(":", 1)[1].strip()
+    if not title:
+        return False, "Title cannot be empty"
+    return True, None
+
 def check_speaker_line_format(line):
     if not re.match(r"^Speaker [12]:", line):
         return False, f"Invalid speaker line format: '{line}'. Expected 'Speaker 1:' or 'Speaker 2:'"
     return True, None
 
 def validate_script_lines(lines):
-    if len(lines) < 3:
-        return False, "No content after voice instruction"
+    if len(lines) < 4:  # Now need at least 4 lines: duration, voice, title, content
+        return False, "No content after title"
     
     # Join all lines into a single text block for multi-line parsing
-    full_text = '\n'.join(lines[2:])  # Skip duration and voice instruction
+    full_text = '\n'.join(lines[3:])  # Skip duration, voice instruction, and title
     
     # Split by Speaker lines while preserving the speaker markers
     speaker_sections = re.split(r'(^Speaker [12]:)', full_text, flags=re.MULTILINE)
@@ -98,6 +108,7 @@ def validate_script(filepath):
     rules = [
         lambda l: check_duration_line(l),
         lambda l: check_voice_instruction(l),
+        lambda l: check_title_line(l),  # Add title validation
         lambda l: validate_script_lines(l)
     ]
 
@@ -141,15 +152,15 @@ def write_config_file(target_dir, estimated_millis):
                 "estimated_duration_ms": estimated_millis,
                 "speaker1" : "Sadachbia",
                 "speaker2" : "Gacrux",
-                "voice_effect": "telephone"
+                "voice_effect": "none"
             },
             "captions": {},
             "img_prompts": {},
             "image_gen": {},
             "upscale_img": {},
             "img_stitch": {
-                "background_music_file": "horror_wind.mp3",
-                "shader" : "analog.glsl",
+                "background_music_file": "choir.mp3",
+                "shader" : "holy.glsl",
             },
             "vid_edit": {}
         }
@@ -181,8 +192,8 @@ def strip_tags_preserve_text(lines):
     voice_instruction = lines[1].split(":", 1)[1].strip()
     stripped_lines = [voice_instruction]  # Keep the voice instruction
 
-    # Join all content lines after voice instruction for proper multi-line processing
-    full_text = '\n'.join(lines[2:])
+    # Join all content lines after title for proper multi-line processing
+    full_text = '\n'.join(lines[3:])  # Skip duration, voice instruction, and title
     
     # Split by Speaker lines while preserving the speaker markers
     speaker_sections = re.split(r'(^Speaker [12]:)', full_text, flags=re.MULTILINE)

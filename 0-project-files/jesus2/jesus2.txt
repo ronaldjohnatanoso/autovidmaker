@@ -1,0 +1,64 @@
+duration_estimation_milliseconds: 165000
+voice_instruction: read in a deep voice of an old man
+title: matthew chapter 6 , verse 25-34
+Speaker 1:
+
+<p1 image_prompt="Old man sitting on porch, open Bible in lap, warm golden hour light">Well now… come sit a spell. I’ve been readin’ from Matthew chapter six — verses twenty-five to thirty-four. That passage’s walked with me through every season. Still does.</p1>
+
+<p2 image_prompt="Jesus on a hillside, soft wind blowing, disciples listening intently">Jesus said, “Don’t worry ‘bout your life — what you’ll eat or wear.” He wasn’t just talkin’ back then. He’s speakin’ right now. To you.</p2>
+
+<p3 image_prompt="Birds flying free in morning sky, wings wide, joyful">“Look at the birds,” He said. No barns, no savings — yet the Lord feeds ‘em all.</p3>
+
+<p4 image_prompt="Tiny bird perched on branch, sunlight through feathers">Ever seen a sparrow stressin’? Nah. And still, they sing.</p4>
+
+<p5 image_prompt="Jesus pointing to sky, soft smile, people around Him listening">If God cares that much for birds… how much more does He care for you?</p5>
+
+<p6 image_prompt="Young child laughing, held by father">You’re His handiwork. His breath in your lungs.</p6>
+
+<p7 image_prompt="Wildflowers swaying in field, sunlight dappling petals">And the lilies? Just wildflowers — yet dressed finer than kings.</p7>
+
+<p8 image_prompt="Close-up of purple and white lilies, dew glistening">Here today, gone tomorrow — still, God clothes ‘em beautifully.</p8>
+
+<p9 image_prompt="Jesus standing among flowers, teaching gently">Ain’t He gonna take care of you too, child?</p9>
+
+<p10 image_prompt="Clock face with time frozen, surrounded by hands of worry">Worry don’t add hours. It steals ‘em. I know. I’ve tossed ‘n turned over nothin’ more times than I can count.</p10>
+
+<p11 image_prompt="Old man staring at ceiling in candlelight, restless night">Most things I feared? Never even happened.</p11>
+
+<p12 image_prompt="Old man praying at bedside, soft light">I remember losin’ my job once. Bills, mouths to feed. Thought we were done for.</p12>
+
+<p13 image_prompt="Empty wallet on table, next to a Bible">But I hit my knees — and somehow, we always had enough.</p13>
+
+<p14 image_prompt="Simple stew on table, steam rising, family holding hands">Not too much. Just enough. Daily bread, like He promised.</p14>
+
+<p15 image_prompt="Jesus walking among people in dusty village">See, Jesus wasn’t preachin’ from a palace. He walked the dust. Held the broken. He knows struggle.</p15>
+
+<p16 image_prompt="Jesus comforting a woman, hand on her shoulder">He felt hunger. Felt fear. But still, He says, “Don’t worry.”</p16>
+
+<p17 image_prompt="Quiet forest trail, golden light between trees">He says, “Seek first the Kingdom of God…”</p17>
+
+<p18 image_prompt="Jesus with outstretched arms, breeze blowing His robe">“…and all these things’ll be added to you.”</p18>
+
+<p19 image_prompt="Hands lifted in prayer, sunrise in background">That’s the secret — eyes on Him, not the storm.</p19>
+
+<p20 image_prompt="Feet walking a dirt path, steady and sure">Keep walkin’. Keep prayin’.</p20>
+
+<p21 image_prompt="Stormy clouds parting to reveal blue sky">Tomorrow’s got its own trouble. But God’s already there, workin’ it out.</p21>
+
+<p22 image_prompt="Man standing on mountaintop, wind blowing, looking ahead">While you’re worryin’ — He’s providin’.</p22>
+
+<p23 image_prompt="Child sleeping peacefully, mother watching over">So breathe deep. Rest. You’re not facin’ this alone.</p23>
+
+<p24 image_prompt="Jesus reaching out His hand in soft glow">He’s holdin’ your tomorrow. And your today.</p24>
+
+<p25 image_prompt="Old man walking through field, sun low on horizon">One day, you’ll look back — and see He was there all along.</p25>
+
+<p26 image_prompt="Footprints on dirt road, side by side with bare feet">Every step. Every burden. Every joy.</p26>
+
+<p27 image_prompt="Old hands flipping through worn Bible pages">Trust don’t mean no storms… just means you don’t walk ‘em alone.</p27>
+
+<p28 image_prompt="Jesus smiling, arms open, golden light behind Him">And one day, you’ll hear Him say…</p28>
+
+<p29 image_prompt="Jesus hugging old man in heaven, both joyful">“You trusted Me. And that was enough.”</p29>
+
+<p30 image_prompt="Starry sky, peaceful hill, cross faint in distance">Well done, My child… well done.</p30>
