@@ -6,6 +6,8 @@ for detail
 3) use the orchestrator to - python orchestrator projectname --autoprocess-all  
     to run the project through all the stages
 
+--- QUICK RUN ---
+
 1) alternatively, make the input.txt script and put that inside the staging folder 
 and make sure its the only there
 2) do , python orchestrator, this automatically validates and runs it through the pipeline until it creates the video
