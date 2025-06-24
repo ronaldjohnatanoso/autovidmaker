@@ -1,0 +1,26 @@
+duration_estimation_milliseconds: 30000
+voice_instruction: energetic and hurried in a british accent
+title: jesus said this and the pharisees wanted to kill him
+Speaker 1:
+
+<p1 image_prompt="Jesus with bold, fearless expression, Pharisees in background with murderous rage">Jesus said TWO WORDS and the Pharisees immediately wanted to MURDER Him! What were they?</p1>
+
+<p2 image_prompt="Pharisees questioning Jesus, setting a trap, smug expressions">They asked, "Who do You think You are?"</p2>
+
+<p3 image_prompt="Jesus looking directly at them, divine authority radiating">Jesus answered with the most SHOCKING claim ever made!</p3>
+
+<p4 image_prompt="Text appearing dramatically in golden letters: 'I AM'">He said, "I AM!"</p4>
+
+<p5 image_prompt="Pharisees' faces turning to absolute fury, grabbing stones">They INSTANTLY grabbed rocks to stone Him!</p5>
+
+<p6 image_prompt="Moses at burning bush, God saying 'I AM WHO I AM'">Because "I AM" is GOD'S name from the burning bush!</p6>
+
+<p7 image_prompt="Jesus claiming to be God, divine light surrounding Him">Jesus just claimed to BE God Himself!</p7>
+
+<p8 image_prompt="Pharisees hurling stones, Jesus mysteriously disappearing">They threw stones but Jesus vanished!</p8>
+
+<p9 image_prompt="Person kneeling before Jesus, recognizing His divinity">Either He's the biggest liar ever or He's GOD!</p9>
+
+<p10 image_prompt="Jesus on throne, crown of glory, 'I AM' written above">Which do YOU believe?</p10>
+
+<p11 image_prompt="AMEN text with subscribe button, divinity graphics">Type AMEN if you believe Jesus is God! Subscribe for more truth!</p11>

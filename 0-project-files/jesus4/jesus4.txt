@@ -1,0 +1,60 @@
+duration_estimation_milliseconds: 155000
+voice_instruction: read in a deep voice of an old man
+title: matthew chapter 13 - the parable of the sower
+Speaker 1:
+
+<p1 image_prompt="Old man holding seeds in weathered palm, fields stretching behind him">Gather 'round, child. Got a story Jesus told in Matthew thirteen. About seeds and soil. Been farmin' most my life — this one hits deep.</p1>
+
+<p2 image_prompt="Jesus by the sea, crowds gathered, teaching from a boat">Jesus sat by the water, crowds pressin' in. Told 'em about a sower who went out to plant.</p2>
+
+<p3 image_prompt="Farmer walking across field, hand casting seeds broadly">Now this farmer, he scattered seed everywhere. Didn't pick and choose where it fell.</p3>
+
+<p4 image_prompt="Seeds falling on hard packed dirt road, birds swooping down">Some fell on the path — hard ground, beaten down. Birds came quick and snatched it up.</p4>
+
+<p5 image_prompt="Tiny green shoots emerging from rocky soil, struggling to grow">Other seeds hit rocky places. Sprouted fast in shallow dirt, looked promising at first.</p5>
+
+<p6 image_prompt="Withered plants under scorching sun, roots too shallow">But when the sun got hot, they withered. No deep roots to draw from.</p6>
+
+<p7 image_prompt="Seeds growing among thorns and weeds, being choked out">Some fell among thorns. Started growin' good, then got choked out by weeds.</p7>
+
+<p8 image_prompt="Rich, dark soil with strong healthy plants, grain heavy on stalks">But the seed that hit good soil? Lord have mercy — thirty, sixty, a hundred times what was planted.</p8>
+
+<p9 image_prompt="Disciples gathering around Jesus, confused expressions, asking questions">Later, disciples asked, "What's it mean, Master?" They were scratched their heads like we do.</p9>
+
+<p10 image_prompt="Jesus explaining with gentle patience, hands gesturing">Jesus said, "The seed is God's Word. But the soil — that's the human heart."</p10>
+
+<p11 image_prompt="Hardened heart depicted as cracked, dry ground">The hard path? That's a closed heart. Word bounces right off.</p11>
+
+<p12 image_prompt="Devil as black bird snatching away truth before it takes root">Satan comes quick, steals the truth before it can settle in.</p12>
+
+<p13 image_prompt="Person hearing Word with initial joy, emotional response">Rocky soil? That's the heart that gets excited at first. "Yes, Lord! I believe!"</p13>
+
+<p14 image_prompt="Same person walking away when faced with difficulty, shallow faith">But when trouble comes, when faith costs somethin' — they're gone.</p14>
+
+<p15 image_prompt="Person surrounded by money, possessions, worldly distractions">Thorny ground? That's the heart choked by worry, riches, pleasures of this world.</p15>
+
+<p16 image_prompt="Word of God being crowded out by material concerns">Hears the Word, but it gets crowded out. No room to grow.</p16>
+
+<p17 image_prompt="Humble person kneeling, heart open, receiving truth deeply">But good soil — that's the honest heart. Hears, understands, holds on tight.</p17>
+
+<p18 image_prompt="Mature believer bearing fruit, helping others, living faithfully">Bears fruit that lasts. Changes lives, helps others, stays faithful through seasons.</p18>
+
+<p19 image_prompt="Mirror reflecting back at viewer, heart examination">So which soil are you, friend? Don't answer quick — think honest.</p19>
+
+<p20 image_prompt="God's Word falling like rain on different types of ground">God's Word falls the same on everyone. The difference is what we do with it.</p20>
+
+<p21 image_prompt="Farmer tending soil, breaking up hard ground with tools">Good news — soil can change. Hard hearts can be broken up.</p21>
+
+<p22 image_prompt="Gardener removing stones and weeds, preparing ground">Shallow ground can be deepened. Thorns can be pulled out.</p22>
+
+<p23 image_prompt="Person reading Bible by lamplight, heart soft and ready">Maybe tonight's the night your heart becomes good soil.</p23>
+
+<p24 image_prompt="Seeds of truth taking root, small green shoots of faith emerging">Let His Word take root deep. Don't let the birds steal it.</p24>
+
+<p25 image_prompt="Strong tree with deep roots weathering a storm">Grow them roots down where storms can't shake you.</p25>
+
+<p26 image_prompt="Harvest field full of grain, abundant fruit from good soil">And watch God bring a harvest from your life you never imagined.</p26>
+
+<p27 image_prompt="Text overlay on peaceful sunset: 'Type AMEN if you understand'">If this Word took root in your heart tonight, type AMEN in the comments.</p27>
+
+<p28 image_prompt="Subscribe button with cross symbol, invitation to join community">And hit that subscribe button if you want to keep growin' in God's truth together.</p28>

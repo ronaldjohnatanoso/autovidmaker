@@ -1,0 +1,26 @@
+duration_estimation_milliseconds: 30000
+voice_instruction: energetic and hurried in a british accent
+title: the bible verse that makes satan flee instantly
+Speaker 1:
+
+<p1 image_prompt="Jesus with blazing eyes of fire, commanding presence, radiating absolute power">STOP! This Bible verse makes Satan LITERALLY run away screaming! Want to see demons flee?</p1>
+
+<p2 image_prompt="Dark demonic figures cowering in terror, covering their faces">Even hearing these words makes hell tremble!</p2>
+
+<p3 image_prompt="Open Bible glowing with supernatural fire, pages burning with holy light">It's James 4:7 and it's LOADED with power!</p3>
+
+<p4 image_prompt="Person standing firm, pointing at fleeing shadow figures">"Submit to God. RESIST the devil..."</p4>
+
+<p5 image_prompt="Satan himself backing away in fear, unable to approach">"...and he WILL flee from you!"</p5>
+
+<p6 image_prompt="Warrior angel with sword, protecting faithful believer">When you stand in God's authority, darkness has NO power!</p6>
+
+<p7 image_prompt="Person shouting scripture, demons running in panic">Say it out loud: "I RESIST you, Satan!"</p7>
+
+<p8 image_prompt="Spiritual warfare scene, light defeating darkness">Watch every attack crumble!</p8>
+
+<p9 image_prompt="Victory celebration, person with arms raised in triumph">You have MORE power than you think!</p9>
+
+<p10 image_prompt="Text overlay: 'Say it NOW!' with urgent command">Speak it: "Satan, I RESIST you in Jesus' name!"</p10>
+
+<p11 image_prompt="AMEN text with subscribe button, victory graphics">Type AMEN if you felt that power! Subscribe for more spiritual warfare weapons!</p11>

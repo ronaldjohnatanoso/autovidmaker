@@ -1,0 +1,26 @@
+duration_estimation_milliseconds: 30000
+voice_instruction: energetic and hurried in a british accent
+title: what jesus said about hell shocked everyone
+Speaker 1:
+
+<p1 image_prompt="Jesus with intense, serious expression, flames reflecting in His eyes">Jesus talked about HELL more than anyone else! What He said will SHOCK you!</p1>
+
+<p2 image_prompt="Religious leaders looking smug, thinking they're safe">Everyone thought they knew who was going to hell...</p2>
+
+<p3 image_prompt="Jesus pointing at religious hypocrites, divine anger">But Jesus said the RELIGIOUS people would fill it!</p3>
+
+<p4 image_prompt="Pharisees in expensive robes, praying loudly in public">The ones praying on street corners for show...</p4>
+
+<p5 image_prompt="Hell's gates opening, religious leaders being cast in">Jesus said THEY'D be first in line!</p5>
+
+<p6 image_prompt="Tax collectors and sinners entering heaven, shocking reversal">While the prostitutes and tax collectors got saved!</p6>
+
+<p7 image_prompt="Jesus weeping over Jerusalem, heartbroken for the lost">He wept because religion WITHOUT relationship leads to hell!</p7>
+
+<p8 image_prompt="Person going through religious motions, empty heart">Are you just playing church or do you KNOW Him?</p8>
+
+<p9 image_prompt="Mirror reflecting viewer, challenging self-examination">Jesus said many will say "Lord, Lord" but He'll say "I never knew you!"</p9>
+
+<p10 image_prompt="Heart check moment, genuine vs fake faith comparison">It's not about being religious - it's about being REAL!</p10>
+
+<p11 image_prompt="AMEN text with subscribe button, warning graphics">Type AMEN if you want REAL relationship with Jesus! Subscribe for more truth!</p11>

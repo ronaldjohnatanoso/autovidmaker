@@ -1,0 +1,26 @@
+duration_estimation_milliseconds: 30000
+voice_instruction: energetic and hurried in a british accent
+title: the 3 words that made jesus weep
+Speaker 1:
+
+<p1 image_prompt="Jesus with tears streaming down His face, heartbroken expression, divine sorrow">These 3 words made JESUS CRY! When God Himself weeps, you NEED to pay attention!</p1>
+
+<p2 image_prompt="Massive crowd turning away from Jesus, rejection and abandonment">After feeding 5,000 people, they ALL walked away!</p2>
+
+<p3 image_prompt="Jesus looking at His 12 disciples, vulnerability in His eyes">Jesus turned to His closest friends and asked...</p3>
+
+<p4 image_prompt="Text appearing dramatically: 'Will you leave too?' with emotional weight">"Will you leave too?"</p4>
+
+<p5 image_prompt="Peter stepping forward boldly, determination in his face">Peter said, "Lord, where else would we go?"</p5>
+
+<p6 image_prompt="Jesus reaching out desperately to viewer, pleading eyes">"You have the words of eternal life!"</p6>
+
+<p7 image_prompt="Person at crossroads, choosing between world and Jesus">Everyone else might abandon Him, but what about YOU?</p7>
+
+<p8 image_prompt="Jesus waiting patiently, arms open, hoping for your answer">He's asking YOU right now: "Will you leave too?"</p8>
+
+<p9 image_prompt="Heart decision moment, choosing to stay with Jesus">Your answer determines your ETERNITY!</p9>
+
+<p10 image_prompt="Text overlay: 'Say NO, I'LL NEVER LEAVE!' with urgency">Tell Him: "Jesus, I'll NEVER leave You!"</p10>
+
+<p11 image_prompt="AMEN text with subscribe button, loyalty graphics">Type AMEN if you're staying with Jesus! Subscribe if you'll never abandon Him!</p11>

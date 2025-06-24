@@ -1,0 +1,62 @@
+duration_estimation_milliseconds: 158000
+voice_instruction: read in a deep voice of an old man
+title: john chapter 11 - jesus raises lazarus from the dead
+Speaker 1:
+
+<p1 image_prompt="Old man leaning forward intensely, eyes wide, gripping Bible">Listen to me — I'm about to tell you 'bout the day death itself got defeated. The day a dead man walked out of his grave. This ain't no fairy tale, child. This happened.</p1>
+
+<p2 image_prompt="Jesus walking dusty road, urgent message being delivered">Jesus got word that His friend Lazarus was sick. Real sick. Sisters Mary and Martha sent word — "Come quick, Lord."</p2>
+
+<p3 image_prompt="Jesus standing still, disciples confused, time passing">But Jesus? He stayed put. Two more days. Can you imagine? Your friend's dyin' and you wait?</p3>
+
+<p4 image_prompt="Disciples gathered around Jesus, worried expressions">Finally said, "Let's go to Judea." Disciples thought He'd lost His mind. "They tried to stone You there, Master!"</p4>
+
+<p5 image_prompt="Jesus with determined look, knowing His purpose">But Jesus said, "Our friend Lazarus has fallen asleep. I'm goin' to wake him up."</p5>
+
+<p6 image_prompt="Tomb sealed with large stone, mourners in black gathered outside">By the time they got there, Lazarus had been dead four days. Four days! Body was already decayin'.</p6>
+
+<p7 image_prompt="Martha running to meet Jesus on the road, tears streaming">Martha ran to Jesus, cryin', "Lord, if You'd been here, my brother wouldn't have died!"</p7>
+
+<p8 image_prompt="Jesus looking at Martha with compassion, speaking gently">Jesus said, "Your brother will rise again." She thought He meant someday, at the resurrection.</p8>
+
+<p9 image_prompt="Jesus speaking with authority, divine power in His voice">"Martha," He said, "I AM the resurrection and the life. Whoever believes in Me will live, even though he dies."</p9>
+
+<p10 image_prompt="Martha's face changing from grief to dawning hope">Then He asked the question that'll shake your soul: "Do you believe this?"</p10>
+
+<p11 image_prompt="Mary falling at Jesus' feet, weeping, surrounded by mourners">Mary came next, fell at His feet, same words: "Lord, if You'd been here..."</p11>
+
+<p12 image_prompt="Jesus looking at the weeping crowd, His own eyes filling with tears">When Jesus saw her cryin', saw all them folks weepin' — the Bible says He was deeply moved.</p12>
+
+<p13 image_prompt="Tears rolling down Jesus' face, shortest verse in the Bible">Then comes the shortest verse in Scripture: "Jesus wept."</p13>
+
+<p14 image_prompt="Crowd pointing, some amazed, others skeptical">Folks said, "See how He loved him!" But others grumbled, "Couldn't He have prevented this?"</p14>
+
+<p15 image_prompt="Jesus approaching the tomb, massive stone sealing the entrance">Jesus came to the tomb — a cave with a stone rolled across it.</p15>
+
+<p16 image_prompt="Jesus commanding with authority, pointing to the stone">"Take away the stone," He said. Martha panicked — "Lord, by now there's a bad odor!"</p16>
+
+<p17 image_prompt="Jesus looking up to heaven, praying with confidence">But Jesus looked up and prayed, "Father, I thank You that You have heard Me."</p17>
+
+<p18 image_prompt="Jesus with arms raised, voice echoing with divine power">Then He cried out with a loud voice that shook the earth: "LAZARUS, COME OUT!"</p18>
+
+<p19 image_prompt="Wrapped figure emerging from tomb, grave clothes still on">And friend — I get chills every time — out walked a dead man. Still wrapped in burial clothes.</p19>
+
+<p20 image_prompt="Crowd gasping in shock and amazement, some falling to their knees">The crowd gasped. Some fell on their faces. Death had just been conquered!</p20>
+
+<p21 image_prompt="Jesus calmly giving instructions, matter-of-fact tone">"Take off the grave clothes," Jesus said, calm as you please. "Let him go."</p21>
+
+<p22 image_prompt="Lazarus free from wrappings, embracing his sisters, joy and wonder">There stood Lazarus — alive, breathin', huggin' his sisters. Four days dead, now walkin' around!</p22>
+
+<p23 image_prompt="Some people believing, others plotting against Jesus">Some folks believed that day. Others? Started plottin' to kill Jesus. Truth divides, always has.</p23>
+
+<p24 image_prompt="Jesus looking directly at viewer, power and love in His eyes">But here's what I want you to hear — Jesus didn't just raise Lazarus. He said, "I AM the resurrection."</p24>
+
+<p25 image_prompt="Person in spiritual darkness, bound by sin and death">Maybe you feel dead inside. Bound up by sin, addiction, despair.</p25>
+
+<p26 image_prompt="Jesus calling out to the spiritually dead, voice of authority">Same Jesus who called Lazarus is callin' you: "Come out of that darkness!"</p26>
+
+<p27 image_prompt="Person stepping into light, chains falling off, new life beginning">He's got power over every kind of death — spiritual, emotional, eternal.</p27>
+
+<p28 image_prompt="Text overlay: 'Type AMEN if you believe Jesus has power over death'">If you believe Jesus has power over death itself, type AMEN right now.</p28>
+
+<p29 image_prompt="Subscribe button with resurrection symbol, call to community">And subscribe if you want to keep hearin' about the God who brings dead things back to life.</p29>

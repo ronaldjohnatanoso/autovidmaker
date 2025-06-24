@@ -1,0 +1,19 @@
+{
+  "stages": {
+    "voice_gen": {
+      "estimated_duration_ms": 30000,
+      "speaker1": "Sadachbia",
+      "speaker2": "Gacrux",
+      "voice_effect": "none"
+    },
+    "captions": {},
+    "img_prompts": {},
+    "image_gen": {},
+    "upscale_img": {},
+    "img_stitch": {
+      "background_music_file": "choir.mp3",
+      "shader": "holy.glsl"
+    },
+    "vid_edit": {}
+  }
+}

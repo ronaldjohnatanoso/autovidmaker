@@ -1,0 +1,30 @@
+duration_estimation_milliseconds: 30000
+voice_instruction: energetic and hurried in a british accent
+title: the prayer that god always answers instantly
+Speaker 1:
+
+<p1 image_prompt="Old man's face close to camera, eyes blazing with intensity">There's ONE prayer God answers INSTANTLY every single time. No waiting. No maybe.</p1>
+
+<p2 image_prompt="Lightning bolt striking from heaven, immediate divine response">The moment you pray it, heaven moves!</p2>
+
+<p3 image_prompt="Person on knees, desperate, hands raised toward sky">It's the prayer of the broken heart, the desperate soul...</p3>
+
+<p4 image_prompt="Jesus on cross, arms stretched wide, ultimate sacrifice">When you cry out "Jesus, save me!" - BAM!</p4>
+
+<p5 image_prompt="Chains breaking apart, darkness fleeing, instant freedom">Your sins are forgiven INSTANTLY!</p5>
+
+<p6 image_prompt="Name being written in golden book in heaven">Your name gets written in the Book of Life!</p6>
+
+<p7 image_prompt="Angels celebrating in heaven, party atmosphere">Heaven throws a party for YOU!</p7>
+
+<p8 image_prompt="Thief on cross next to Jesus, making this very prayer">"Today you'll be with Me in paradise" - Jesus said it!</p8>
+
+<p9 image_prompt="Clock showing instant moment, no delay">Not tomorrow. Not someday. TODAY!</p9>
+
+<p10 image_prompt="Heart glowing with new life, transformation happening">One prayer. Instant salvation!</p10>
+
+<p11 image_prompt="Text overlay: 'Pray it NOW!' with urgent call">Say it right now: "Jesus, save me!"</p11>
+
+<p12 image_prompt="Heaven's gates opening wide, welcoming light">Did you feel that? You just got saved!</p12>
+
+<p13 image_prompt="AMEN text with subscribe button, celebration graphics">Type AMEN if you just prayed that prayer! Subscribe for more life-changing truth!</p13>

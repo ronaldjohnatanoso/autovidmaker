@@ -1,0 +1,30 @@
+duration_estimation_milliseconds: 30000
+voice_instruction: Extremely breathy, low-pitched male voice with soft throat resonance. British accent. Monotone and slow, like the speaker is drifting off. Whisper-dominant phonation with low larynx. Vocal cord tension minimal — breath carries most of the sound. Subtle subharmonic vibration layered into the airflow. Gentle vocal fry on fade-outs. Maximize breath-to-voice ratio, while preserving tactile low-end rumble inside the breath. Feels like an exhale with weight — intimate, calming, and sleep-inducing.
+title: the one bible verse that terrifies demons
+Speaker 1:
+
+<p1 image_prompt="Old man's eyes wide with intensity, leaning into camera, urgent expression">There's ONE Bible verse that makes demons flee in terror. Wanna know what it is?</p1>
+
+<p2 image_prompt="Dark shadowy figures recoiling in fear, covering their faces">Even Satan himself can't stand to hear these words spoken with faith.</p2>
+
+<p3 image_prompt="Open Bible glowing with supernatural light, pages flipping to Philippians">It's Philippians 2:10-11, and here's why it's so powerful...</p3>
+
+<p4 image_prompt="Jesus on throne, crown of glory, majestic and authoritative">"At the name of Jesus, EVERY knee shall bow..."</p4>
+
+<p5 image_prompt="Angels bowing in heaven, worship and reverence">Every angel in heaven bows down.</p5>
+
+<p6 image_prompt="People on earth kneeling in worship, hands raised">Every person on earth will kneel.</p6>
+
+<p7 image_prompt="Demons in chains, forced to their knees, unable to resist">And every demon in hell is FORCED to bow!</p7>
+
+<p8 image_prompt="Jesus' name in golden letters, radiating power and authority">That NAME has absolute power over darkness!</p8>
+
+<p9 image_prompt="Person shouting 'JESUS!' with demons fleeing in background">When you speak His name in faith, demons RUN!</p9>
+
+<p10 image_prompt="Cross blazing with light, darkness being pushed back">They have NO choice but to submit!</p10>
+
+<p11 image_prompt="Text overlay: 'Say JESUS right now!' with urgent call to action">Say His name right now - JESUS!</p11>
+
+<p12 image_prompt="Viewer's face reflected back, challenge in text overlay">Feel that power? That's why hell trembles!</p12>
+
+<p13 image_prompt="AMEN text pulsing on screen with subscribe button">Type AMEN if you felt His power! Subscribe for more truth that sets you FREE!</p13>

@@ -150,9 +150,9 @@ def write_config_file(target_dir, estimated_millis):
         "stages": {
             "voice_gen": {
                 "estimated_duration_ms": estimated_millis,
-                "speaker1" : "Sadachbia",
+                "speaker1" : "Enceladus",
                 "speaker2" : "Gacrux",
-                "voice_effect": "none"
+                "voice_effect": "telephone"
             },
             "captions": {},
             "img_prompts": {},

@@ -1,0 +1,26 @@
+duration_estimation_milliseconds: 30000
+voice_instruction: energetic and hurried in a british accent
+title: the disciples saw jesus do this and freaked out
+Speaker 1:
+
+<p1 image_prompt="Jesus walking on stormy water, disciples' faces in absolute terror and shock">The disciples saw Jesus do THIS and completely FREAKED OUT! Even they couldn't believe it!</p1>
+
+<p2 image_prompt="Massive storm with 20-foot waves crashing, boat being tossed violently">They're fighting for their lives in a deadly storm!</p2>
+
+<p3 image_prompt="Jesus casually walking on water like it's solid ground, completely calm">Then they see someone WALKING on the water!</p3>
+
+<p4 image_prompt="Disciples screaming in terror, thinking it's a ghost">They screamed, "IT'S A GHOST!"</p4>
+
+<p5 image_prompt="Jesus calling out calmly, 'Don't be afraid, it's Me!'">Jesus said, "Don't be afraid - it's ME!"</p5>
+
+<p6 image_prompt="Peter stepping out of boat onto water, initial faith">Peter said, "If that's You, let me walk too!"</p6>
+
+<p7 image_prompt="Peter actually walking on water, amazed at himself">And he DID IT! Peter walked on water!</p7>
+
+<p8 image_prompt="Peter looking at waves, fear creeping in, starting to sink">But then he looked at the storm and started SINKING!</p8>
+
+<p9 image_prompt="Jesus instantly grabbing Peter, saving him from drowning">"Why did you doubt?" Jesus asked!</p9>
+
+<p10 image_prompt="Storm instantly calming the moment Jesus steps in boat">The second Jesus got in - INSTANT calm!</p10>
+
+<p11 image_prompt="AMEN text with subscribe button, miracle graphics">Type AMEN if you believe Jesus controls the storms! Subscribe for more miracles!</p11>
